@@ -1,4 +1,3 @@
-// app/index.js
 import DateTimePicker from '@react-native-community/datetimepicker';
 import { Picker } from '@react-native-picker/picker';
 import { useRouter } from 'expo-router';
@@ -30,10 +29,17 @@ export default function RegisterScreen() {
 	const [showDatePicker, setShowDatePicker] = useState(false);
 	const [address, setAddress] = useState('');
 	const [phoneNumber, setPhoneNumber] = useState('');
+	const [loading, setLoading] = useState(false);
 
 	const handleRegister = async () => {
+		if (!firstName || !lastName || !address || !phoneNumber) {
+			Alert.alert('Error', 'Please fill in all required fields');
+			return;
+		}
+
+		setLoading(true);
 		try {
-			const res = await api.post('/register.php', {
+			const res = await api.post('/complete_registration.php', {
 				first_name: firstName,
 				last_name: lastName,
 				gender,
@@ -43,12 +49,19 @@ export default function RegisterScreen() {
 			});
 
 			if (res.data.success) {
-				router.push('/create-account');
+				Alert.alert('Success', 'Registration completed successfully!', [
+					{
+						text: 'OK',
+						onPress: () => router.replace('/member-area'),
+					},
+				]);
 			} else {
 				Alert.alert('Error', res.data.message || 'Registration failed');
 			}
 		} catch (err) {
 			Alert.alert('Error', 'Server error');
+		} finally {
+			setLoading(false);
 		}
 	};
 
@@ -65,8 +78,12 @@ export default function RegisterScreen() {
 						<Animated.Text
 							entering={FadeInUp.duration(700)}
 							style={styles.title}>
-							Register
+							Complete Your Profile
 						</Animated.Text>
+
+						<Text style={styles.subtitle}>
+							Please fill in your details to complete registration
+						</Text>
 
 						<Animated.View
 							entering={FadeInUp.delay(200)}
@@ -74,7 +91,7 @@ export default function RegisterScreen() {
 							<Icon name='person' size={24} color='#555' />
 							<TextInput
 								style={styles.inputField}
-								placeholder='First Name'
+								placeholder='First Name *'
 								value={firstName}
 								onChangeText={setFirstName}
 							/>
@@ -84,7 +101,7 @@ export default function RegisterScreen() {
 							<Icon name='person-outline' size={24} color='#555' />
 							<TextInput
 								style={styles.inputField}
-								placeholder='Last Name'
+								placeholder='Last Name *'
 								value={lastName}
 								onChangeText={setLastName}
 							/>
@@ -121,9 +138,10 @@ export default function RegisterScreen() {
 							<Icon name='home' size={24} color='#555' />
 							<TextInput
 								style={styles.inputField}
-								placeholder='Address'
+								placeholder='Address *'
 								value={address}
 								onChangeText={setAddress}
+								multiline
 							/>
 						</View>
 
@@ -131,14 +149,25 @@ export default function RegisterScreen() {
 							<Icon name='phone' size={24} color='#555' />
 							<TextInput
 								style={styles.inputField}
-								placeholder='Phone Number'
+								placeholder='Phone Number *'
 								value={phoneNumber}
 								keyboardType='phone-pad'
 								onChangeText={setPhoneNumber}
 							/>
 						</View>
+						<Animated.View
+							entering={FadeInUp.delay(600)}
+							style={styles.buttonContainer}>
+							<Button
+								title={loading ? 'Registering...' : 'Complete Registration'}
+								onPress={handleRegister}
+								disabled={loading}
+							/>
+						</Animated.View>
 
-						<Button title='Register' onPress={handleRegister} />
+						<View style={styles.buttonContainer}>
+							<Button title='Register' onPress={handleRegister} />
+						</View>
 					</View>
 				</ScrollView>
 			</KeyboardAvoidingView>

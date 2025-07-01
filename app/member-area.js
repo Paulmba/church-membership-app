@@ -17,8 +17,8 @@ export default function MemberAreaScreen() {
 	const router = useRouter();
 
 	const handleLogout = () => {
-		// Here you can also clear AsyncStorage later
-		router.replace('/login');
+		console.log('Logging out...');
+		router.replace('/'); // Use root instead of /index
 	};
 
 	return (

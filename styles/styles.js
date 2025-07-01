@@ -86,4 +86,33 @@ export default StyleSheet.create({
 		fontSize: 14,
 		color: '#444',
 	},
+	buttonContainer: {
+		marginVertical: 10,
+	},
+	linkContainer: {
+		marginTop: 20,
+		alignItems: 'center',
+	},
+	linkText: {
+		color: '#fff',
+		fontSize: 16,
+		textDecorationLine: 'underline',
+		fontWeight: '500',
+	},
+	otpSubtitle: {
+		fontSize: 16,
+		color: '#fff',
+		textAlign: 'center',
+		marginBottom: 30,
+		paddingHorizontal: 20,
+	},
+	resendContainer: {
+		marginTop: 20,
+		alignItems: 'center',
+	},
+	countdownText: {
+		color: '#fff',
+		fontSize: 14,
+		opacity: 0.8,
+	},
 });

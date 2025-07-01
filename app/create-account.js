@@ -19,9 +19,27 @@ import styles from '../styles/styles';
 export default function CreateAccountScreen() {
 	const [phone, setPhone] = useState('');
 	const [password, setPassword] = useState('');
+	const [confirmPassword, setConfirmPassword] = useState('');
+	const [loading, setLoading] = useState(false);
 	const router = useRouter();
 
 	const handleCreateAccount = async () => {
+		if (!phone || !password || !confirmPassword) {
+			Alert.alert('Error', 'Please fill in all fields');
+			return;
+		}
+
+		if (password !== confirmPassword) {
+			Alert.alert('Error', 'Passwords do not match');
+			return;
+		}
+
+		if (password.length < 6) {
+			Alert.alert('Error', 'Password must be at least 6 characters');
+			return;
+		}
+
+		setLoading(true);
 		try {
 			const res = await api.post('/create_account.php', {
 				phone_number: phone,
@@ -29,12 +47,18 @@ export default function CreateAccountScreen() {
 			});
 
 			if (res.data.success) {
-				router.push('/login');
+				// Redirect to OTP verification screen
+				router.push({
+					pathname: '/otp-verification',
+					params: { phone_number: phone },
+				});
 			} else {
 				Alert.alert('Error', res.data.message || 'Account creation failed');
 			}
 		} catch (err) {
 			Alert.alert('Error', 'Server error');
+		} finally {
+			setLoading(false);
 		}
 	};
 
@@ -77,7 +101,24 @@ export default function CreateAccountScreen() {
 							/>
 						</View>
 
-						<Button title='Create Account' onPress={handleCreateAccount} />
+						<View style={styles.inputRow}>
+							<Icon name='lock-outline' size={24} color='#555' />
+							<TextInput
+								style={styles.inputField}
+								placeholder='Confirm Password'
+								value={confirmPassword}
+								onChangeText={setConfirmPassword}
+								secureTextEntry
+							/>
+						</View>
+
+						<View style={styles.buttonContainer}>
+							<Button
+								title={loading ? 'Creating Account...' : 'Create Account'}
+								onPress={handleCreateAccount}
+								disabled={loading}
+							/>
+						</View>
 					</View>
 				</ScrollView>
 			</KeyboardAvoidingView>
