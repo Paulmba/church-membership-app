@@ -43,13 +43,15 @@ if (!$row['is_verified']) {
     exit;
 }
 
-// Check if user needs to complete registration
-$needs_registration = !$row['profile_completed'];
+// Determine user status
+$has_member_record = !is_null($row['mid']);
+$needs_registration = !$has_member_record;
 
 echo json_encode([
     'success' => true,
     'needs_registration' => $needs_registration,
-    'user_name' => $row['first_name'] . ' ' . $row['last_name']
+    'user_name' => $has_member_record ? $row['first_name'] . ' ' . $row['last_name'] : null,
+    'has_member_record' => $has_member_record
 ]);
 
 $conn->close();

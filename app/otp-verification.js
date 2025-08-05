@@ -58,7 +58,7 @@ export default function OTPVerificationScreen() {
 				Alert.alert('Success', 'Account verified successfully!', [
 					{
 						text: 'OK',
-						onPress: () => router.replace('/'), // Go back to login
+						onPress: () => router.replace('/'),
 					},
 				]);
 			} else {

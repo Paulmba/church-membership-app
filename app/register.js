@@ -159,15 +159,11 @@ export default function RegisterScreen() {
 							entering={FadeInUp.delay(600)}
 							style={styles.buttonContainer}>
 							<Button
-								title={loading ? 'Registering...' : 'Complete Registration'}
+								title={loading ? 'Registering...' : 'Register'}
 								onPress={handleRegister}
 								disabled={loading}
 							/>
 						</Animated.View>
-
-						<View style={styles.buttonContainer}>
-							<Button title='Register' onPress={handleRegister} />
-						</View>
 					</View>
 				</ScrollView>
 			</KeyboardAvoidingView>

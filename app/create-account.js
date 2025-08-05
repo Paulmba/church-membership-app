@@ -47,10 +47,14 @@ export default function CreateAccountScreen() {
 			});
 
 			if (res.data.success) {
-				// Redirect to OTP verification screen
+				// Always redirect to OTP verification
+				// After OTP verification, user will go to login
+				// Login will determine if they need registration or go to member area
 				router.push({
 					pathname: '/otp-verification',
-					params: { phone_number: phone },
+					params: {
+						phone_number: phone,
+					},
 				});
 			} else {
 				Alert.alert('Error', res.data.message || 'Account creation failed');

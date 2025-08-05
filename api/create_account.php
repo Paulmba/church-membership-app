@@ -6,86 +6,51 @@ header('Access-Control-Allow-Headers: Content-Type');
 
 require 'db.php';
 
-// Check if sms_helper.php exists, if not create a basic sendSMS function
-if (file_exists('sms_helper.php')) {
-    require 'sms_helper.php';
-} else {
-    // Fallback function if sms_helper.php doesn't exist
-    function sendSMS($phone_number, $message)
-    {
-        // Log the OTP for testing purposes
-        error_log("SMS to $phone_number: $message");
-        return true; // Always return true for testing
-    }
-}
-
 $data = json_decode(file_get_contents("php://input"), true);
 
+// Validate required fields
 if (!isset($data['phone_number'], $data['password'])) {
-    echo json_encode(['success' => false, 'message' => 'Missing fields']);
+    echo json_encode(['success' => false, 'message' => 'Missing required fields']);
     exit;
 }
 
+// Sanitize input
 $phone_number = $conn->real_escape_string($data['phone_number']);
-$password = password_hash($data['password'], PASSWORD_BCRYPT);
+$password = password_hash($data['password'], PASSWORD_DEFAULT);
 
-// Validate phone number
-if (empty($phone_number) || strlen($phone_number) < 9) {
-    echo json_encode(['success' => false, 'message' => 'Invalid phone number']);
+// Check if phone number already exists in MobileUsers table
+$mobile_user_check = $conn->query("SELECT phone_number FROM MobileUsers WHERE phone_number = '$phone_number'");
+if ($mobile_user_check && $mobile_user_check->num_rows > 0) {
+    echo json_encode(['success' => false, 'message' => 'Phone number already registered']);
     exit;
 }
 
+// Check if phone number exists in Members table
+$member_check = $conn->query("SELECT mid FROM Members WHERE phone_number = '$phone_number'");
+$existing_member = ($member_check && $member_check->num_rows > 0);
 
-// Check if account already exists
-$check = $conn->query("SELECT * FROM MobileUsers WHERE phone_number = '$phone_number'");
-if ($check && $check->num_rows > 0) {
-    echo json_encode(['success' => false, 'message' => 'Account already exists']);
-    exit;
+if ($existing_member) {
+    // Get the member ID
+    $member_row = $member_check->fetch_assoc();
+    $mid = $member_row['mid'];
+
+    // Create mobile user account linked to existing member
+    $sql = "INSERT INTO MobileUsers (phone_number, password, mid, is_verified) 
+            VALUES ('$phone_number', '$password', $mid, FALSE)";
+} else {
+    // Create mobile user account without member link
+    $sql = "INSERT INTO MobileUsers (phone_number, password, is_verified) 
+            VALUES ('$phone_number', '$password', FALSE)";
 }
 
-// Insert into MobileUsers table (not verified yet)
-$insert = "INSERT INTO MobileUsers (phone_number, password, is_verified) 
-           VALUES ('$phone_number', '$password', FALSE)";
-
-if ($conn->query($insert)) {
-    // Generate OTP
-    $otp_code = sprintf("%06d", mt_rand(100000, 999999));
-    $expires_at = gmdate('Y-m-d H:i:s', strtotime('+5 minutes'));
-    // Clean up old OTPs for this number
-    $conn->query("DELETE FROM OTP WHERE phone_number = '$phone_number'");
-
-    // Insert new OTP
-    $otp_insert = "INSERT INTO OTP (phone_number, otp_code, expires_at) 
-                   VALUES ('$phone_number', '$otp_code', '$expires_at')";
-
-    if ($conn->query($otp_insert)) {
-        // Try to send SMS
-        $sms_sent = false;
-        $sms_message = "Your Church App verification code is: $otp_code. Valid for 5 minutes.";
-
-        try {
-            $sms_sent = sendSMS($phone_number, $sms_message);
-        } catch (Exception $e) {
-            error_log("SMS sending failed: " . $e->getMessage());
-            $sms_sent = false;
-        }
-
-        if ($sms_sent) {
-            echo json_encode([
-                'success' => true,
-                'message' => 'Account created successfully. OTP sent to your phone.'
-            ]);
-        } else {
-            // Even if SMS fails, account is created and OTP is in database
-            echo json_encode([
-                'success' => true,
-                'message' => 'Account created. SMS service unavailable. Contact admin for OTP.',
-                'otp_for_testing' => $otp_code // Remove this in production
-            ]);
-        }
-    } else {
-        echo json_encode(['success' => false, 'message' => 'Failed to generate OTP: ' . $conn->error]);
-    }
+if ($conn->query($sql)) {
+    // Generate and store OTP (you'll implement this later)
+    // For now, just return success with member status
+    echo json_encode([
+        'success' => true,
+        'message' => 'Account created successfully',
+        'existing_member' => $existing_member
+    ]);
 } else {
     echo json_encode(['success' => false, 'message' => 'Account creation failed: ' . $conn->error]);
 }
