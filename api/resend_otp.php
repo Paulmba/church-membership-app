@@ -5,17 +5,7 @@ header('Access-Control-Allow-Methods: POST');
 header('Access-Control-Allow-Headers: Content-Type');
 
 require 'db.php';
-
-// Include SMS helper with fallback
-if (file_exists('sms_helper.php')) {
-    require 'sms_helper.php';
-} else {
-    function sendSMS($phone_number, $message)
-    {
-        error_log("SMS to $phone_number: $message");
-        return true;
-    }
-}
+require 'push_notification_helper.php';
 
 $data = json_decode(file_get_contents("php://input"), true);
 
@@ -26,12 +16,15 @@ if (!isset($data['phone_number'])) {
 
 $phone_number = $conn->real_escape_string($data['phone_number']);
 
-// Check if user exists and is not verified yet
-$check = $conn->query("SELECT * FROM MobileUsers WHERE phone_number = '$phone_number' AND is_verified = FALSE");
+// Check if user exists and is not verified yet, and get push token
+$check = $conn->query("SELECT push_token FROM MobileUsers WHERE phone_number = '$phone_number' AND is_verified = FALSE");
 if (!$check || $check->num_rows === 0) {
     echo json_encode(['success' => false, 'message' => 'Account not found or already verified']);
     exit;
 }
+
+$user_row = $check->fetch_assoc();
+$push_token = $user_row['push_token'];
 
 // Check if too many recent attempts (optional security measure)
 $recent_attempts = $conn->query("SELECT COUNT(*) as count FROM OTP WHERE phone_number = '$phone_number' AND created_at > DATE_SUB(UTC_TIMESTAMP(), INTERVAL 1 HOUR)");
@@ -52,26 +45,36 @@ $insert = "INSERT INTO OTP (phone_number, otp_code, expires_at)
            VALUES ('$phone_number', '$otp_code', '$expires_at')";
 
 if ($conn->query($insert)) {
-    $sms_message = "Your Church App verification code is: $otp_code. Valid for 5 minutes.";
+    $notification_sent = false;
+    $response_message = '';
 
-    try {
-        $sms_sent = sendSMS($phone_number, $sms_message);
-        if ($sms_sent) {
-            echo json_encode(['success' => true, 'message' => 'OTP sent successfully']);
+    if ($push_token) {
+        // Send push notification
+        $push_result = sendOTPPushNotification($push_token, $otp_code, $phone_number);
+
+        // Log the notification attempt
+        $log_sql = "INSERT INTO PushNotificationLog (phone_number, push_token, notification_type, title, body, status) 
+                    VALUES ('$phone_number', '$push_token', 'otp_resend', 'Church App - Verification Code', 
+                    'Your verification code is: $otp_code', '" . ($push_result['success'] ? 'sent' : 'failed') . "')";
+        $conn->query($log_sql);
+
+        if ($push_result['success']) {
+            $notification_sent = true;
+            $response_message = 'OTP resent via push notification';
         } else {
-            echo json_encode([
-                'success' => true,
-                'message' => 'OTP generated but SMS failed',
-                'otp_for_testing' => $otp_code // Remove in production
-            ]);
+            $response_message = 'OTP generated but push notification failed';
         }
-    } catch (Exception $e) {
-        echo json_encode([
-            'success' => true,
-            'message' => 'OTP generated but SMS service unavailable',
-            'otp_for_testing' => $otp_code // Remove in production
-        ]);
+    } else {
+        $response_message = 'OTP generated but no push token available';
     }
+
+    echo json_encode([
+        'success' => true,
+        'message' => $response_message,
+        'notification_sent' => $notification_sent,
+        // Remove in production - only for testing
+        'otp_for_testing' => $otp_code
+    ]);
 } else {
     echo json_encode(['success' => false, 'message' => 'Failed to generate OTP']);
 }

@@ -1,5 +1,5 @@
 import { useRouter } from 'expo-router';
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
 	Alert,
 	Button,
@@ -14,6 +14,7 @@ import Animated, { FadeInUp } from 'react-native-reanimated';
 import Icon from 'react-native-vector-icons/MaterialIcons';
 
 import api from '../api';
+import PushNotificationService from '../services/pushNotificationService';
 import styles from '../styles/styles';
 
 export default function CreateAccountScreen() {
@@ -21,7 +22,33 @@ export default function CreateAccountScreen() {
 	const [password, setPassword] = useState('');
 	const [confirmPassword, setConfirmPassword] = useState('');
 	const [loading, setLoading] = useState(false);
+	const [pushToken, setPushToken] = useState(null);
 	const router = useRouter();
+
+	useEffect(() => {
+		// Initialize push notifications when component mounts
+		initializePushNotifications();
+	}, []);
+
+	const initializePushNotifications = async () => {
+		try {
+			const token = await PushNotificationService.initialize();
+			if (token) {
+				setPushToken(token);
+				console.log('Push token obtained:', token);
+			} else {
+				console.log('Failed to get push token');
+				// You might want to show a warning to the user
+				Alert.alert(
+					'Notification Permission',
+					'Push notifications are disabled. You may not receive OTP notifications.',
+					[{ text: 'OK' }]
+				);
+			}
+		} catch (error) {
+			console.error('Push notification initialization error:', error);
+		}
+	};
 
 	const handleCreateAccount = async () => {
 		if (!phone || !password || !confirmPassword) {
@@ -41,26 +68,62 @@ export default function CreateAccountScreen() {
 
 		setLoading(true);
 		try {
-			const res = await api.post('/create_account.php', {
+			const requestData = {
 				phone_number: phone,
 				password,
-			});
+			};
+
+			// Include push token if available
+			if (pushToken) {
+				requestData.push_token = pushToken;
+			}
+
+			const res = await api.post('/create_account.php', requestData);
 
 			if (res.data.success) {
-				// Always redirect to OTP verification
-				// After OTP verification, user will go to login
-				// Login will determine if they need registration or go to member area
-				router.push({
-					pathname: '/otp-verification',
-					params: {
-						phone_number: phone,
-					},
-				});
+				if (res.data.notification_sent) {
+					Alert.alert(
+						'Account Created',
+						'Account created successfully! Check your notifications for the OTP.',
+						[
+							{
+								text: 'OK',
+								onPress: () =>
+									router.push({
+										pathname: '/otp-verification',
+										params: {
+											phone_number: phone,
+											has_push_notifications: 'true',
+										},
+									}),
+							},
+						]
+					);
+				} else {
+					Alert.alert(
+						'Account Created',
+						'Account created successfully! You will need to enter the OTP manually.',
+						[
+							{
+								text: 'OK',
+								onPress: () =>
+									router.push({
+										pathname: '/otp-verification',
+										params: {
+											phone_number: phone,
+											has_push_notifications: 'false',
+										},
+									}),
+							},
+						]
+					);
+				}
 			} else {
 				Alert.alert('Error', res.data.message || 'Account creation failed');
 			}
 		} catch (err) {
-			Alert.alert('Error', 'Server error');
+			console.error('Account creation error:', err);
+			Alert.alert('Error', 'Server error occurred');
 		} finally {
 			setLoading(false);
 		}
@@ -123,6 +186,17 @@ export default function CreateAccountScreen() {
 								disabled={loading}
 							/>
 						</View>
+
+						{!pushToken && (
+							<Animated.View
+								entering={FadeInUp.delay(800)}
+								style={styles.warningContainer}>
+								<Icon name='warning' size={20} color='#ff9800' />
+								<Text style={styles.warningText}>
+									Push notifications disabled. Enable them for OTP delivery.
+								</Text>
+							</Animated.View>
+						)}
 					</View>
 				</ScrollView>
 			</KeyboardAvoidingView>
