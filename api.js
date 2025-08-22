@@ -1,6 +1,6 @@
 import axios from 'axios';
 
-const BASE_URL = 'http://192.168.137.174:8000'; // Replace with your PHP backend URL
+const BASE_URL = 'http://10.111.223.123:8000'; // Replace with your PHP backend URL
 
 const api = axios.create({
 	baseURL: BASE_URL,
