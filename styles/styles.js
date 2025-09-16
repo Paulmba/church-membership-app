@@ -6,7 +6,7 @@ const { width, height } = Dimensions.get('window');
 export default StyleSheet.create({
 	background: {
 		flex: 1,
-		justifyContent: 'center',
+		backgroundColor: '#f0f2f5',
 	},
 	container: {
 		padding: 20,
@@ -18,7 +18,7 @@ export default StyleSheet.create({
 		fontWeight: 'bold',
 		textAlign: 'center',
 		marginBottom: 30,
-		color: '#fff',
+		color: '#1a1a1a',
 	},
 	inputRow: {
 		flexDirection: 'row',
@@ -38,7 +38,7 @@ export default StyleSheet.create({
 	label: {
 		marginBottom: 5,
 		fontWeight: '600',
-		color: '#fff',
+		color: '#1a1a1a',
 	},
 	picker: {
 		backgroundColor: '#fff',
@@ -59,12 +59,16 @@ export default StyleSheet.create({
 	},
 	card: {
 		width: '40%',
-		backgroundColor: '#ffffffcc',
+		backgroundColor: '#ffffff',
 		borderRadius: 10,
 		paddingVertical: 20,
 		alignItems: 'center',
 		marginBottom: 15,
-		elevation: 4,
+		shadowColor: '#000',
+		shadowOffset: { width: 0, height: 1 },
+		shadowOpacity: 0.1,
+		shadowRadius: 4,
+		elevation: 2,
 	},
 	cardText: {
 		marginTop: 8,
@@ -73,16 +77,16 @@ export default StyleSheet.create({
 		color: '#333',
 	},
 	sectionBox: {
-		backgroundColor: '#ffffffcc',
+		backgroundColor: '#ffffff',
 		borderRadius: 8,
 		padding: 15,
 		marginBottom: 15,
 	},
 	sectionTitle: {
 		fontWeight: 'bold',
-		fontSize: 16,
-		marginBottom: 5,
-		color: '#222',
+		fontSize: 18,
+		marginBottom: 15,
+		color: '#1a1a1a',
 	},
 	sectionContent: {
 		fontSize: 14,
@@ -96,14 +100,14 @@ export default StyleSheet.create({
 		alignItems: 'center',
 	},
 	linkText: {
-		color: '#fff',
+		color: '#007bff',
 		fontSize: 16,
 		textDecorationLine: 'underline',
 		fontWeight: '500',
 	},
 	otpSubtitle: {
 		fontSize: 16,
-		color: '#fff',
+		color: '#1a1a1a',
 		textAlign: 'center',
 		marginBottom: 30,
 		paddingHorizontal: 20,
@@ -113,7 +117,7 @@ export default StyleSheet.create({
 		alignItems: 'center',
 	},
 	countdownText: {
-		color: '#fff',
+		color: '#1a1a1a',
 		fontSize: 14,
 		opacity: 0.8,
 	},
@@ -121,15 +125,15 @@ export default StyleSheet.create({
 	warningContainer: {
 		flexDirection: 'row',
 		alignItems: 'center',
-		backgroundColor: 'rgba(255, 152, 0, 0.1)',
+		backgroundColor: '#fff3e0',
 		padding: 12,
 		borderRadius: 8,
 		marginTop: 15,
 		borderWidth: 1,
-		borderColor: 'rgba(255, 152, 0, 0.3)',
+		borderColor: '#ffe0b2',
 	},
 	warningText: {
-		color: '#ff9800',
+		color: '#e65100',
 		fontSize: 14,
 		marginLeft: 8,
 		flex: 1,
@@ -138,15 +142,15 @@ export default StyleSheet.create({
 	notificationInfo: {
 		flexDirection: 'row',
 		alignItems: 'center',
-		backgroundColor: 'rgba(76, 175, 80, 0.1)',
+		backgroundColor: '#e8f5e9',
 		padding: 12,
 		borderRadius: 8,
 		marginBottom: 15,
 		borderWidth: 1,
-		borderColor: 'rgba(76, 175, 80, 0.3)',
+		borderColor: '#c8e6c9',
 	},
 	notificationText: {
-		color: '#4CAF50',
+		color: '#2e7d32',
 		fontSize: 14,
 		marginLeft: 8,
 		fontWeight: '500',
@@ -154,15 +158,15 @@ export default StyleSheet.create({
 	instructionContainer: {
 		flexDirection: 'row',
 		alignItems: 'flex-start',
-		backgroundColor: 'rgba(33, 150, 243, 0.1)',
+		backgroundColor: '#e3f2fd',
 		padding: 12,
 		borderRadius: 8,
 		marginTop: 15,
 		borderWidth: 1,
-		borderColor: 'rgba(33, 150, 243, 0.3)',
+		borderColor: '#bbdefb',
 	},
 	instructionText: {
-		color: '#2196F3',
+		color: '#0d47a1',
 		fontSize: 13,
 		marginLeft: 8,
 		flex: 1,
@@ -182,31 +186,25 @@ export default StyleSheet.create({
 		fontWeight: '500',
 	},
 	statusSuccess: {
-		backgroundColor: 'rgba(76, 175, 80, 0.1)',
-		borderColor: 'rgba(76, 175, 80, 0.3)',
+		backgroundColor: '#e8f5e9',
+		borderColor: '#c8e6c9',
 		borderWidth: 1,
 	},
 	statusError: {
-		backgroundColor: 'rgba(244, 67, 54, 0.1)',
-		borderColor: 'rgba(244, 67, 54, 0.3)',
+		backgroundColor: '#ffebee',
+		borderColor: '#ffcdd2',
 		borderWidth: 1,
 	},
 	statusWarning: {
-		backgroundColor: 'rgba(255, 152, 0, 0.1)',
-		borderColor: 'rgba(255, 152, 0, 0.3)',
+		backgroundColor: '#fff3e0',
+		borderColor: '#ffe0b2',
 		borderWidth: 1,
 	},
 	memberHeader: {
-		backgroundColor: 'rgba(255, 255, 255, 0.95)',
-		marginHorizontal: 20,
-		marginTop: 50,
-		borderRadius: 15,
+		backgroundColor: '#ffffff',
 		padding: 20,
-		shadowColor: '#000',
-		shadowOffset: { width: 0, height: 2 },
-		shadowOpacity: 0.1,
-		shadowRadius: 8,
-		elevation: 5,
+		borderBottomWidth: 1,
+		borderBottomColor: '#e0e0e0',
 	},
 
 	profileSection: {
@@ -224,14 +222,14 @@ export default StyleSheet.create({
 		height: 60,
 		borderRadius: 30,
 		borderWidth: 3,
-		borderColor: '#3498db',
+		borderColor: '#007bff',
 	},
 
 	defaultProfileImage: {
 		width: 60,
 		height: 60,
 		borderRadius: 30,
-		backgroundColor: '#3498db',
+		backgroundColor: '#007bff',
 		justifyContent: 'center',
 		alignItems: 'center',
 	},
@@ -240,7 +238,7 @@ export default StyleSheet.create({
 		position: 'absolute',
 		top: -5,
 		right: -5,
-		backgroundColor: '#e63946',
+		backgroundColor: '#dc3545',
 		borderRadius: 12,
 		minWidth: 24,
 		height: 24,
@@ -263,13 +261,13 @@ export default StyleSheet.create({
 	memberName: {
 		fontSize: 20,
 		fontWeight: 'bold',
-		color: '#2c3e50',
+		color: '#1a1a1a',
 		marginBottom: 4,
 	},
 
 	memberRole: {
 		fontSize: 16,
-		color: '#7f8c8d',
+		color: '#6c757d',
 		marginBottom: 8,
 	},
 
@@ -288,8 +286,7 @@ export default StyleSheet.create({
 
 	// Quick Actions Styles
 	quickActionsSection: {
-		marginHorizontal: 20,
-		marginTop: 20,
+		padding: 20,
 	},
 
 	actionGrid: {
@@ -300,21 +297,21 @@ export default StyleSheet.create({
 
 	actionCard: {
 		width: (width - 60) / 2,
-		backgroundColor: '#3498db',
+		backgroundColor: '#ffffff',
 		borderRadius: 12,
 		padding: 15,
 		marginBottom: 10,
 		flexDirection: 'row',
 		alignItems: 'center',
 		shadowColor: '#000',
-		shadowOffset: { width: 0, height: 2 },
+		shadowOffset: { width: 0, height: 1 },
 		shadowOpacity: 0.1,
 		shadowRadius: 4,
-		elevation: 3,
+		elevation: 2,
 	},
 
 	actionText: {
-		color: '#fff',
+		color: '#1a1a1a',
 		fontWeight: 'bold',
 		marginLeft: 10,
 		fontSize: 14,
@@ -323,7 +320,7 @@ export default StyleSheet.create({
 	// Tab Styles
 	tabContainer: {
 		flexDirection: 'row',
-		backgroundColor: '#ecf0f1',
+		backgroundColor: '#e9ecef',
 		borderRadius: 25,
 		padding: 4,
 		marginBottom: 15,
@@ -340,8 +337,8 @@ export default StyleSheet.create({
 	},
 
 	activeTab: {
-		backgroundColor: '#3498db',
-		shadowColor: '#3498db',
+		backgroundColor: '#007bff',
+		shadowColor: '#007bff',
 		shadowOffset: { width: 0, height: 2 },
 		shadowOpacity: 0.3,
 		shadowRadius: 4,
@@ -352,7 +349,7 @@ export default StyleSheet.create({
 		marginLeft: 6,
 		fontSize: 13,
 		fontWeight: '600',
-		color: '#666',
+		color: '#6c757d',
 	},
 
 	activeTabText: {
@@ -361,30 +358,27 @@ export default StyleSheet.create({
 
 	// Section Styles
 	announcementsSection: {
-		marginHorizontal: 20,
-		marginTop: 20,
+		padding: 20,
 	},
 
 	eventsSection: {
-		marginHorizontal: 20,
-		marginTop: 25,
+		padding: 20,
 	},
 
 	demographicSection: {
-		marginHorizontal: 20,
-		marginTop: 25,
+		padding: 20,
 	},
 
 	sectionTitle: {
 		fontSize: 18,
 		fontWeight: 'bold',
-		color: '#2c3e50',
+		color: '#1a1a1a',
 		marginBottom: 15,
 	},
 
 	// Announcement Card Styles
 	announcementCard: {
-		backgroundColor: '#fff',
+		backgroundColor: '#ffffff',
 		borderRadius: 12,
 		padding: 15,
 		marginBottom: 12,
@@ -415,24 +409,24 @@ export default StyleSheet.create({
 	announcementTitle: {
 		fontSize: 16,
 		fontWeight: 'bold',
-		color: '#2c3e50',
+		color: '#1a1a1a',
 		marginBottom: 4,
 	},
 
 	announcementAuthor: {
 		fontSize: 12,
-		color: '#7f8c8d',
+		color: '#6c757d',
 	},
 
 	announcementContent: {
 		fontSize: 14,
-		color: '#34495e',
+		color: '#343a40',
 		lineHeight: 20,
 	},
 
 	// Event Card Styles
 	eventCard: {
-		backgroundColor: '#fff',
+		backgroundColor: '#ffffff',
 		borderRadius: 12,
 		padding: 15,
 		marginBottom: 12,
@@ -453,26 +447,26 @@ export default StyleSheet.create({
 	eventTitle: {
 		fontSize: 16,
 		fontWeight: 'bold',
-		color: '#2c3e50',
+		color: '#1a1a1a',
 		flex: 1,
 		marginRight: 10,
 	},
 
 	eventDate: {
 		fontSize: 12,
-		color: '#27ae60',
+		color: '#28a745',
 		fontWeight: '600',
 	},
 
 	eventDetails: {
 		fontSize: 14,
-		color: '#7f8c8d',
+		color: '#6c757d',
 		marginBottom: 6,
 	},
 
 	eventAttendees: {
 		fontSize: 13,
-		color: '#34495e',
+		color: '#343a40',
 		marginBottom: 12,
 	},
 
@@ -483,14 +477,14 @@ export default StyleSheet.create({
 	rsvpButton: {
 		flexDirection: 'row',
 		alignItems: 'center',
-		backgroundColor: '#3498db',
+		backgroundColor: '#007bff',
 		paddingHorizontal: 15,
 		paddingVertical: 8,
 		borderRadius: 20,
 	},
 
 	attendingButton: {
-		backgroundColor: '#27ae60',
+		backgroundColor: '#28a745',
 	},
 
 	rsvpText: {
@@ -502,7 +496,7 @@ export default StyleSheet.create({
 
 	// Resource Card Styles
 	resourceCard: {
-		backgroundColor: '#fff',
+		backgroundColor: '#ffffff',
 		borderRadius: 12,
 		padding: 15,
 		shadowColor: '#000',
@@ -515,20 +509,20 @@ export default StyleSheet.create({
 	resourceTitle: {
 		fontSize: 16,
 		fontWeight: 'bold',
-		color: '#2c3e50',
+		color: '#1a1a1a',
 		marginBottom: 8,
 	},
 
 	resourceContent: {
 		fontSize: 14,
-		color: '#34495e',
+		color: '#343a40',
 		lineHeight: 20,
 		marginBottom: 12,
 	},
 
 	resourceButton: {
 		alignSelf: 'flex-start',
-		backgroundColor: '#9b59b6',
+		backgroundColor: '#6f42c1',
 		paddingHorizontal: 15,
 		paddingVertical: 8,
 		borderRadius: 20,
@@ -566,12 +560,12 @@ export default StyleSheet.create({
 	modalTitle: {
 		fontSize: 18,
 		fontWeight: 'bold',
-		color: '#2c3e50',
+		color: '#1a1a1a',
 	},
 
 	modalInput: {
 		borderWidth: 1,
-		borderColor: '#bdc3c7',
+		borderColor: '#ced4da',
 		borderRadius: 8,
 		padding: 12,
 		marginBottom: 15,
@@ -592,7 +586,7 @@ export default StyleSheet.create({
 
 	modalCancelButton: {
 		flex: 1,
-		backgroundColor: '#95a5a6',
+		backgroundColor: '#6c757d',
 		padding: 12,
 		borderRadius: 8,
 		marginRight: 10,
@@ -601,7 +595,7 @@ export default StyleSheet.create({
 
 	modalSubmitButton: {
 		flex: 1,
-		backgroundColor: '#3498db',
+		backgroundColor: '#007bff',
 		padding: 12,
 		borderRadius: 8,
 		marginLeft: 10,
@@ -622,9 +616,9 @@ export default StyleSheet.create({
 
 	// Logout & Loading Styles
 	logoutSection: {
-		marginHorizontal: 20,
-		marginTop: 30,
-		marginBottom: 50,
+		padding: 20,
+		marginTop: 10,
+		marginBottom: 30,
 	},
 
 	logoutButton: {
@@ -635,16 +629,11 @@ export default StyleSheet.create({
 		padding: 15,
 		borderRadius: 12,
 		borderWidth: 1,
-		borderColor: '#e63946',
-		shadowColor: '#000',
-		shadowOffset: { width: 0, height: 1 },
-		shadowOpacity: 0.05,
-		shadowRadius: 3,
-		elevation: 2,
+		borderColor: '#dc3545',
 	},
 
 	logoutText: {
-		color: '#e63946',
+		color: '#dc3545',
 		fontSize: 16,
 		fontWeight: '600',
 		marginLeft: 8,
@@ -654,10 +643,11 @@ export default StyleSheet.create({
 		flex: 1,
 		justifyContent: 'center',
 		alignItems: 'center',
+		backgroundColor: '#f0f2f5',
 	},
 
 	loadingText: {
-		color: '#fff',
+		color: '#1a1a1a',
 		fontSize: 16,
 		marginTop: 15,
 	},
@@ -668,7 +658,7 @@ export default StyleSheet.create({
 
 	emptyText: {
 		fontSize: 14,
-		color: '#7f8c8d',
+		color: '#6c757d',
 		textAlign: 'center',
 		marginTop: 10,
 		marginBottom: 20,

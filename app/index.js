@@ -1,5 +1,5 @@
 import { useRouter } from 'expo-router';
-import React, { useState } from 'react';
+import React, { useContext, useState } from 'react';
 import {
 	Alert,
 	Button,
@@ -17,12 +17,14 @@ import Icon from 'react-native-vector-icons/MaterialIcons';
 
 import api from '../api';
 import styles from '../styles/styles';
+import { AuthContext } from './AuthContext';
 
 export default function LoginScreen() {
 	const [phone, setPhone] = useState('');
 	const [password, setPassword] = useState('');
 	const [loading, setLoading] = useState(false);
 	const router = useRouter();
+    const { login } = useContext(AuthContext);
 
 	const handleLogin = async () => {
 		if (!phone || !password) {
@@ -38,11 +40,12 @@ export default function LoginScreen() {
 			});
 
 			if (res.data.success) {
-				// Check if user needs to complete registration
+				await login(res.data.token, res.data.member_id);
+
 				if (res.data.needs_registration) {
 					router.push('/register');
 				} else {
-					router.push('/member-area');
+					router.push('/member-area'); // redirect to member-area if profile is ready
 				}
 			} else {
 				Alert.alert('Login Failed', res.data.message);
@@ -54,14 +57,8 @@ export default function LoginScreen() {
 		}
 	};
 
-	const handleCreateAccount = () => {
-		router.push('/create-account');
-	};
-
 	return (
-		<ImageBackground
-			source={require('../assets/bg.jpg')}
-			style={styles.background}>
+		<ImageBackground source={require('../assets/bg.jpg')} style={styles.background}>
 			<KeyboardAvoidingView
 				behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
 				style={{ flex: 1 }}>
@@ -107,7 +104,7 @@ export default function LoginScreen() {
 
 						<TouchableOpacity
 							style={styles.linkContainer}
-							onPress={handleCreateAccount}>
+							onPress={() => router.push('/create-account')}>
 							<Text style={styles.linkText}>New user? Create account</Text>
 						</TouchableOpacity>
 					</View>
