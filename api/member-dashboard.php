@@ -1,5 +1,5 @@
 <?php
-// src/api/mobile/member-dashboard.php
+// api/member-dashboard.php
 
 header("Access-Control-Allow-Origin: *");
 header("Content-Type: application/json; charset=UTF-8");
@@ -13,9 +13,18 @@ if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
     exit();
 }
 
-require_once '../config/database.php';
-require_once '../models/Member.php';
-require 'db.php';
+// Include database connection
+require_once 'config/db.php';
+
+// Create database connection
+if (!$pdo) {
+    http_response_code(503);
+    echo json_encode([
+        'success' => false,
+        'message' => 'Database connection failed'
+    ]);
+    exit();
+}
 
 $method = $_SERVER['REQUEST_METHOD'];
 $action = isset($_GET['action']) ? $_GET['action'] : '';
@@ -85,10 +94,10 @@ function getMemberProfile($db)
     }
 
     try {
-        // Get member basic info
+        // Get member basic info with leadership roles
         $memberQuery = "SELECT m.*, 
                               TIMESTAMPDIFF(YEAR, m.dob, CURDATE()) as age,
-                              GROUP_CONCAT(lr.role_name) as roles
+                              GROUP_CONCAT(DISTINCT lr.role_name) as roles
                        FROM members m
                        LEFT JOIN member_leadership ml ON m.mid = ml.member_id
                        LEFT JOIN leadership_roles lr ON ml.role_id = lr.role_id
@@ -96,7 +105,7 @@ function getMemberProfile($db)
                        GROUP BY m.mid";
 
         $stmt = $db->prepare($memberQuery);
-        $stmt->bindParam(':member_id', $member_id);
+        $stmt->bindParam(':member_id', $member_id, PDO::PARAM_INT);
         $stmt->execute();
         $member = $stmt->fetch(PDO::FETCH_ASSOC);
 
@@ -111,7 +120,7 @@ function getMemberProfile($db)
 
         // Check if member is a leader
         $isLeader = !empty($member['roles']);
-        $isPastor = $isLeader && strpos(strtolower($member['roles']), 'pastor') !== false;
+        $isPastor = $isLeader && strpos(strtolower($member['roles'] ?? ''), 'pastor') !== false;
 
         // Get notification count (unread announcements)
         $notificationQuery = "SELECT COUNT(*) as count FROM announcements 
@@ -121,7 +130,7 @@ function getMemberProfile($db)
                              ) 
                              AND expiry_date > NOW()";
         $notifStmt = $db->prepare($notificationQuery);
-        $notifStmt->bindParam(':member_id', $member_id);
+        $notifStmt->bindParam(':member_id', $member_id, PDO::PARAM_INT);
         $notifStmt->execute();
         $notifications = $notifStmt->fetch(PDO::FETCH_ASSOC);
 
@@ -133,7 +142,7 @@ function getMemberProfile($db)
             'profileImage' => null, // Add profile image handling if needed
             'isLeader' => $isLeader,
             'isPastor' => $isPastor,
-            'notifications' => $notifications['count'],
+            'notifications' => $notifications['count'] ?? 0,
             'age' => $member['age'],
             'gender' => $member['gender']
         ];
@@ -161,7 +170,7 @@ function getAnnouncements($db)
         // Get member info to determine demographic
         $memberQuery = "SELECT *, TIMESTAMPDIFF(YEAR, dob, CURDATE()) as age FROM members WHERE mid = :member_id";
         $memberStmt = $db->prepare($memberQuery);
-        $memberStmt->bindParam(':member_id', $member_id);
+        $memberStmt->bindParam(':member_id', $member_id, PDO::PARAM_INT);
         $memberStmt->execute();
         $member = $memberStmt->fetch(PDO::FETCH_ASSOC);
 
@@ -175,7 +184,7 @@ function getAnnouncements($db)
 
         // Build query based on type
         $whereConditions = ["a.expiry_date > NOW()"];
-        $params = [];
+        $params = [':member_id' => $member_id];
 
         if ($type === 'general') {
             $whereConditions[] = "a.type = 'general'";
@@ -187,7 +196,7 @@ function getAnnouncements($db)
             // Check if member is a leader
             $leaderCheck = "SELECT COUNT(*) as count FROM member_leadership WHERE member_id = :member_id";
             $leaderStmt = $db->prepare($leaderCheck);
-            $leaderStmt->bindParam(':member_id', $member_id);
+            $leaderStmt->bindParam(':member_id', $member_id, PDO::PARAM_INT);
             $leaderStmt->execute();
             $isLeader = $leaderStmt->fetch(PDO::FETCH_ASSOC)['count'] > 0;
 
@@ -253,7 +262,7 @@ function getEvents($db)
         // Get member demographic
         $memberQuery = "SELECT *, TIMESTAMPDIFF(YEAR, dob, CURDATE()) as age FROM members WHERE mid = :member_id";
         $memberStmt = $db->prepare($memberQuery);
-        $memberStmt->bindParam(':member_id', $member_id);
+        $memberStmt->bindParam(':member_id', $member_id, PDO::PARAM_INT);
         $memberStmt->execute();
         $member = $memberStmt->fetch(PDO::FETCH_ASSOC);
 
@@ -274,7 +283,7 @@ function getEvents($db)
                   ORDER BY e.event_date ASC";
 
         $stmt = $db->prepare($query);
-        $stmt->bindParam(':member_id', $member_id);
+        $stmt->bindParam(':member_id', $member_id, PDO::PARAM_INT);
         $stmt->bindParam(':demographic', $demographic);
         $stmt->execute();
 
@@ -321,7 +330,7 @@ function createAnnouncement($db)
         // Check if member is a leader
         $leaderCheck = "SELECT COUNT(*) as count FROM member_leadership WHERE member_id = :member_id";
         $leaderStmt = $db->prepare($leaderCheck);
-        $leaderStmt->bindParam(':member_id', $member_id);
+        $leaderStmt->bindParam(':member_id', $member_id, PDO::PARAM_INT);
         $leaderStmt->execute();
         $isLeader = $leaderStmt->fetch(PDO::FETCH_ASSOC)['count'] > 0;
 
@@ -338,9 +347,9 @@ function createAnnouncement($db)
         $stmt->bindParam(':title', $title);
         $stmt->bindParam(':content', $content);
         $stmt->bindParam(':type', $type);
-        $stmt->bindParam(':is_urgent', $is_urgent);
+        $stmt->bindParam(':is_urgent', $is_urgent, PDO::PARAM_BOOL);
         $stmt->bindParam(':expiry_date', $expiry_date);
-        $stmt->bindParam(':created_by', $member_id);
+        $stmt->bindParam(':created_by', $member_id, PDO::PARAM_INT);
 
         if ($stmt->execute()) {
             http_response_code(201);
@@ -375,8 +384,8 @@ function rsvpEvent($db)
         // Check if RSVP already exists
         $checkQuery = "SELECT id FROM event_rsvp WHERE event_id = :event_id AND member_id = :member_id";
         $checkStmt = $db->prepare($checkQuery);
-        $checkStmt->bindParam(':event_id', $event_id);
-        $checkStmt->bindParam(':member_id', $member_id);
+        $checkStmt->bindParam(':event_id', $event_id, PDO::PARAM_INT);
+        $checkStmt->bindParam(':member_id', $member_id, PDO::PARAM_INT);
         $checkStmt->execute();
 
         if ($checkStmt->fetch()) {
@@ -390,8 +399,8 @@ function rsvpEvent($db)
         }
 
         $stmt = $db->prepare($query);
-        $stmt->bindParam(':event_id', $event_id);
-        $stmt->bindParam(':member_id', $member_id);
+        $stmt->bindParam(':event_id', $event_id, PDO::PARAM_INT);
+        $stmt->bindParam(':member_id', $member_id, PDO::PARAM_INT);
         $stmt->bindParam(':status', $status);
 
         if ($stmt->execute()) {
@@ -429,7 +438,7 @@ function getPrayerRequests($db)
                   LIMIT 20";
 
         $stmt = $db->prepare($query);
-        $stmt->bindParam(':member_id', $member_id);
+        $stmt->bindParam(':member_id', $member_id, PDO::PARAM_INT);
         $stmt->execute();
 
         $prayerRequests = [];
@@ -473,10 +482,10 @@ function createPrayerRequest($db)
                   VALUES (:member_id, :title, :request_text, :is_anonymous)";
 
         $stmt = $db->prepare($query);
-        $stmt->bindParam(':member_id', $member_id);
+        $stmt->bindParam(':member_id', $member_id, PDO::PARAM_INT);
         $stmt->bindParam(':title', $title);
         $stmt->bindParam(':request_text', $request_text);
-        $stmt->bindParam(':is_anonymous', $is_anonymous);
+        $stmt->bindParam(':is_anonymous', $is_anonymous, PDO::PARAM_BOOL);
 
         if ($stmt->execute()) {
             http_response_code(201);
@@ -497,11 +506,197 @@ function getDemographic($age, $gender)
         return 'children';
     } elseif ($age <= 35) {
         return 'youth';
-    } elseif ($gender === 'M') {
+    } elseif ($gender === 'M' || $gender === 'male') {
         return 'men';
-    } elseif ($gender === 'F') {
+    } elseif ($gender === 'F' || $gender === 'female') {
         return 'women';
     } else {
         return 'general';
+    }
+}
+function togglePrayerSupport($db)
+{
+    $data = json_decode(file_get_contents("php://input"), true);
+
+    $member_id = $data['member_id'] ?? null;
+    $prayer_request_id = $data['prayer_request_id'] ?? null;
+    $is_praying = $data['is_praying'] ?? false;
+
+    if (!$member_id || !$prayer_request_id) {
+        http_response_code(400);
+        echo json_encode(['success' => false, 'message' => 'Member ID and Prayer Request ID are required']);
+        return;
+    }
+
+    try {
+        if ($is_praying) {
+            // Add prayer support
+            $checkQuery = "SELECT id FROM prayer_support WHERE prayer_request_id = :prayer_request_id AND member_id = :member_id";
+            $checkStmt = $db->prepare($checkQuery);
+            $checkStmt->bindParam(':prayer_request_id', $prayer_request_id, PDO::PARAM_INT);
+            $checkStmt->bindParam(':member_id', $member_id, PDO::PARAM_INT);
+            $checkStmt->execute();
+
+            if (!$checkStmt->fetch()) {
+                // Insert new prayer support
+                $insertQuery = "INSERT INTO prayer_support (prayer_request_id, member_id) VALUES (:prayer_request_id, :member_id)";
+                $insertStmt = $db->prepare($insertQuery);
+                $insertStmt->bindParam(':prayer_request_id', $prayer_request_id, PDO::PARAM_INT);
+                $insertStmt->bindParam(':member_id', $member_id, PDO::PARAM_INT);
+                $insertStmt->execute();
+            } else {
+                // Update existing prayer support
+                $updateQuery = "UPDATE prayer_support SET prayer_count = prayer_count + 1, last_prayed = NOW() WHERE prayer_request_id = :prayer_request_id AND member_id = :member_id";
+                $updateStmt = $db->prepare($updateQuery);
+                $updateStmt->bindParam(':prayer_request_id', $prayer_request_id, PDO::PARAM_INT);
+                $updateStmt->bindParam(':member_id', $member_id, PDO::PARAM_INT);
+                $updateStmt->execute();
+            }
+
+            $message = 'Added to prayer support';
+        } else {
+            // Remove prayer support
+            $deleteQuery = "DELETE FROM prayer_support WHERE prayer_request_id = :prayer_request_id AND member_id = :member_id";
+            $deleteStmt = $db->prepare($deleteQuery);
+            $deleteStmt->bindParam(':prayer_request_id', $prayer_request_id, PDO::PARAM_INT);
+            $deleteStmt->bindParam(':member_id', $member_id, PDO::PARAM_INT);
+            $deleteStmt->execute();
+
+            $message = 'Removed from prayer support';
+        }
+
+        http_response_code(200);
+        echo json_encode(['success' => true, 'message' => $message]);
+    } catch (Exception $e) {
+        http_response_code(500);
+        echo json_encode(['success' => false, 'message' => 'Server error: ' . $e->getMessage()]);
+    }
+}
+
+function markPrayerAnswered($db)
+{
+    $data = json_decode(file_get_contents("php://input"), true);
+
+    $member_id = $data['member_id'] ?? null;
+    $prayer_request_id = $data['prayer_request_id'] ?? null;
+    $testimony = trim($data['testimony'] ?? '');
+
+    if (!$member_id || !$prayer_request_id) {
+        http_response_code(400);
+        echo json_encode(['success' => false, 'message' => 'Member ID and Prayer Request ID are required']);
+        return;
+    }
+
+    try {
+        // Check if the member owns this prayer request
+        $ownerCheck = "SELECT member_id FROM prayer_requests WHERE id = :prayer_request_id";
+        $ownerStmt = $db->prepare($ownerCheck);
+        $ownerStmt->bindParam(':prayer_request_id', $prayer_request_id, PDO::PARAM_INT);
+        $ownerStmt->execute();
+        $owner = $ownerStmt->fetch(PDO::FETCH_ASSOC);
+
+        if (!$owner || $owner['member_id'] != $member_id) {
+            http_response_code(403);
+            echo json_encode(['success' => false, 'message' => 'You can only mark your own prayer requests as answered']);
+            return;
+        }
+
+        // Mark prayer request as answered
+        $updateQuery = "UPDATE prayer_requests SET answered_at = NOW(), answered_testimony = :testimony WHERE id = :prayer_request_id";
+        $updateStmt = $db->prepare($updateQuery);
+        $updateStmt->bindParam(':testimony', $testimony);
+        $updateStmt->bindParam(':prayer_request_id', $prayer_request_id, PDO::PARAM_INT);
+
+        if ($updateStmt->execute()) {
+            http_response_code(200);
+            echo json_encode(['success' => true, 'message' => 'Prayer request marked as answered']);
+        } else {
+            http_response_code(500);
+            echo json_encode(['success' => false, 'message' => 'Failed to mark prayer as answered']);
+        }
+    } catch (Exception $e) {
+        http_response_code(500);
+        echo json_encode(['success' => false, 'message' => 'Server error: ' . $e->getMessage()]);
+    }
+}
+
+function getPrayerRequestDetails($db)
+{
+    $prayer_request_id = isset($_GET['prayer_request_id']) ? $_GET['prayer_request_id'] : null;
+    $member_id = isset($_GET['member_id']) ? $_GET['member_id'] : null;
+
+    if (!$prayer_request_id || !$member_id) {
+        http_response_code(400);
+        echo json_encode(['success' => false, 'message' => 'Prayer Request ID and Member ID are required']);
+        return;
+    }
+
+    try {
+        $query = "SELECT pr.*, 
+                         CASE 
+                           WHEN pr.is_anonymous = 1 THEN 'Anonymous'
+                           ELSE CONCAT(m.first_name, ' ', m.last_name)
+                         END as requester_name,
+                         (SELECT COUNT(*) FROM prayer_support WHERE prayer_request_id = pr.id) as prayer_count,
+                         (SELECT COUNT(*) FROM prayer_support WHERE prayer_request_id = pr.id AND member_id = :member_id) as is_praying,
+                         pr.answered_at IS NOT NULL as is_answered
+                  FROM prayer_requests pr
+                  LEFT JOIN members m ON pr.member_id = m.mid
+                  WHERE pr.id = :prayer_request_id";
+
+        $stmt = $db->prepare($query);
+        $stmt->bindParam(':prayer_request_id', $prayer_request_id, PDO::PARAM_INT);
+        $stmt->bindParam(':member_id', $member_id, PDO::PARAM_INT);
+        $stmt->execute();
+
+        $prayerRequest = $stmt->fetch(PDO::FETCH_ASSOC);
+
+        if (!$prayerRequest) {
+            http_response_code(404);
+            echo json_encode(['success' => false, 'message' => 'Prayer request not found']);
+            return;
+        }
+
+        // Get prayer supporters (if not anonymous or if user is the requester)
+        $showSupporters = !$prayerRequest['is_anonymous'] || $prayerRequest['member_id'] == $member_id;
+        $supporters = [];
+
+        if ($showSupporters) {
+            $supportQuery = "SELECT CONCAT(m.first_name, ' ', m.last_name) as supporter_name, 
+                                   ps.praying_since, ps.prayer_count
+                            FROM prayer_support ps
+                            JOIN members m ON ps.member_id = m.mid
+                            WHERE ps.prayer_request_id = :prayer_request_id
+                            ORDER BY ps.praying_since ASC";
+
+            $supportStmt = $db->prepare($supportQuery);
+            $supportStmt->bindParam(':prayer_request_id', $prayer_request_id, PDO::PARAM_INT);
+            $supportStmt->execute();
+
+            $supporters = $supportStmt->fetchAll(PDO::FETCH_ASSOC);
+        }
+
+        $response = [
+            'id' => $prayerRequest['id'],
+            'title' => $prayerRequest['title'],
+            'content' => $prayerRequest['request_text'],
+            'requester' => $prayerRequest['requester_name'],
+            'priority_level' => $prayerRequest['priority_level'],
+            'category' => $prayerRequest['category'],
+            'date' => date('Y-m-d', strtotime($prayerRequest['created_at'])),
+            'prayer_count' => (int)$prayerRequest['prayer_count'],
+            'is_praying' => (bool)$prayerRequest['is_praying'],
+            'is_answered' => (bool)$prayerRequest['is_answered'],
+            'answered_at' => $prayerRequest['answered_at'],
+            'answered_testimony' => $prayerRequest['answered_testimony'],
+            'is_owner' => $prayerRequest['member_id'] == $member_id,
+            'supporters' => $supporters
+        ];
+
+        http_response_code(200);
+        echo json_encode(['success' => true, 'data' => $response]);
+    } catch (Exception $e) {
+        http_response_code(500);
+        echo json_encode(['success' => false, 'message' => 'Server error: ' . $e->getMessage()]);
     }
 }

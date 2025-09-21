@@ -1,5 +1,5 @@
 import { useRouter } from 'expo-router';
-import React, { useEffect, useState, useContext } from 'react';
+import React, { useContext, useEffect, useState } from 'react';
 import {
 	Alert,
 	Image,
@@ -19,12 +19,13 @@ import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 import styles from '../styles/styles';
 import { AuthContext } from './AuthContext';
 
-// API Configuration
-const API_BASE_URL = 'http://10.177.33.123:8000'; // Replace with your server URL
+// API Configuration - Update this to match your server
+const API_BASE_URL = 'http://10.130.134.148:8000/api'; // adjust if needed
 
 export default function MemberAreaScreen() {
 	const router = useRouter();
-    const { memberId, logout } = useContext(AuthContext);
+	const { memberId, logout } = useContext(AuthContext);
+
 	const [refreshing, setRefreshing] = useState(false);
 	const [activeTab, setActiveTab] = useState('general');
 	const [showCreateModal, setShowCreateModal] = useState(false);
@@ -33,43 +34,56 @@ export default function MemberAreaScreen() {
 	const [events, setEvents] = useState([]);
 	const [prayerRequests, setPrayerRequests] = useState([]);
 	const [loading, setLoading] = useState(true);
+	const [tabLoading, setTabLoading] = useState(false);
 
 	// Modal form state
 	const [modalTitle, setModalTitle] = useState('');
 	const [modalContent, setModalContent] = useState('');
 
 	useEffect(() => {
-		loadMemberData();
-	}, []);
+		if (memberId) {
+			loadMemberData();
+		} else {
+			Alert.alert('Error', 'Member ID not found. Please login again.');
+			// give logout a moment to run
+			logout && logout();
+		}
+		// eslint-disable-next-line react-hooks/exhaustive-deps
+	}, [memberId]);
 
 	const loadMemberData = async () => {
 		try {
 			setLoading(true);
 			await Promise.all([
 				loadMemberProfile(),
-				loadAnnouncements(),
+				loadAnnouncements(activeTab),
 				loadEvents(),
 				loadPrayerRequests(),
 			]);
-			setLoading(false);
 		} catch (error) {
 			console.error('Error loading member data:', error);
-			setLoading(false);
 			Alert.alert('Error', 'Failed to load member data. Please try again.');
+		} finally {
+			setLoading(false);
 		}
 	};
 
 	const loadMemberProfile = async () => {
 		try {
 			const response = await fetch(
-				`${API_BASE_URL}/mobile/member-dashboard.php?action=member-profile&member_id=${memberId}`
+				`${API_BASE_URL}/member-dashboard.php?action=member-profile&member_id=${memberId}`
 			);
+
+			if (!response.ok) {
+				throw new Error(`HTTP error! status: ${response.status}`);
+			}
+
 			const result = await response.json();
 
 			if (result.success) {
 				setMember(result.data);
 			} else {
-				throw new Error(result.message);
+				throw new Error(result.message || 'Failed to load profile');
 			}
 		} catch (error) {
 			console.error('Error loading member profile:', error);
@@ -77,57 +91,79 @@ export default function MemberAreaScreen() {
 		}
 	};
 
-	const loadAnnouncements = async () => {
+	const loadAnnouncements = async (tab = activeTab) => {
 		try {
+			setTabLoading(true);
 			const response = await fetch(
-				`${API_BASE_URL}/mobile/member-dashboard.php?action=announcements&member_id=${memberId}&type=${activeTab}`
+				`${API_BASE_URL}/member-dashboard.php?action=announcements&member_id=${memberId}&type=${tab}`
 			);
+
+			if (!response.ok) {
+				throw new Error(`HTTP error! status: ${response.status}`);
+			}
+
 			const result = await response.json();
 
 			if (result.success) {
-				setAnnouncements(result.data);
+				setAnnouncements(result.data || []);
 			} else {
-				throw new Error(result.message);
+				throw new Error(result.message || 'Failed to load announcements');
 			}
 		} catch (error) {
 			console.error('Error loading announcements:', error);
-			throw error;
+			// keep existing announcements if any, but show console
+		} finally {
+			setTabLoading(false);
 		}
 	};
 
 	const loadEvents = async () => {
 		try {
 			const response = await fetch(
-				`${API_BASE_URL}/mobile/member-dashboard.php?action=events&member_id=${memberId}`
+				`${API_BASE_URL}/member-dashboard.php?action=events&member_id=${memberId}`
 			);
+
+			if (!response.ok) {
+				throw new Error(`HTTP error! status: ${response.status}`);
+			}
+
 			const result = await response.json();
 
 			if (result.success) {
-				setEvents(result.data);
+				// ensure events array has numeric attendees and boolean isAttending
+				const normalized = (result.data || []).map((e) => ({
+					...e,
+					attendees: Number(e.attendees) || 0,
+					isAttending: !!e.isAttending,
+				}));
+				setEvents(normalized);
 			} else {
-				throw new Error(result.message);
+				throw new Error(result.message || 'Failed to load events');
 			}
 		} catch (error) {
 			console.error('Error loading events:', error);
-			throw error;
 		}
 	};
 
 	const loadPrayerRequests = async () => {
 		try {
 			const response = await fetch(
-				`${API_BASE_URL}/mobile/member-dashboard.php?action=prayer-requests&member_id=${memberId}`
+				`${API_BASE_URL}/member-dashboard.php?action=prayer-requests&member_id=${memberId}`
 			);
+
+			if (!response.ok) {
+				throw new Error(`HTTP error! status: ${response.status}`);
+			}
+
 			const result = await response.json();
 
 			if (result.success) {
-				setPrayerRequests(result.data);
+				setPrayerRequests(result.data || []);
 			} else {
-				throw new Error(result.message);
+				throw new Error(result.message || 'Failed to load prayer requests');
 			}
 		} catch (error) {
 			console.error('Error loading prayer requests:', error);
-			throw error;
 		}
 	};
 
@@ -140,24 +176,14 @@ export default function MemberAreaScreen() {
 	const handleLogout = () => {
 		Alert.alert('Logout', 'Are you sure you want to logout?', [
 			{ text: 'Cancel', style: 'cancel' },
-			{ text: 'Logout', onPress: () => logout() },
+			{ text: 'Logout', onPress: () => logout && logout() },
 		]);
 	};
 
 	const handleTabChange = async (newTab) => {
+		if (newTab === activeTab) return;
 		setActiveTab(newTab);
-		try {
-			const response = await fetch(
-				`${API_BASE_URL}/mobile/member-dashboard.php?action=announcements&member_id=${memberId}&type=${newTab}`
-			);
-			const result = await response.json();
-
-			if (result.success) {
-				setAnnouncements(result.data);
-			}
-		} catch (error) {
-			console.error('Error loading announcements for tab:', error);
-		}
+		await loadAnnouncements(newTab);
 	};
 
 	const handleCreateAnnouncement = async () => {
@@ -168,7 +194,7 @@ export default function MemberAreaScreen() {
 
 		try {
 			const response = await fetch(
-				`${API_BASE_URL}/mobile/member-dashboard.php?action=create-announcement`,
+				`${API_BASE_URL}/member-dashboard.php?action=create-announcement`,
 				{
 					method: 'POST',
 					headers: {
@@ -187,6 +213,10 @@ export default function MemberAreaScreen() {
 				}
 			);
 
+			if (!response.ok) {
+				throw new Error(`HTTP error! status: ${response.status}`);
+			}
+
 			const result = await response.json();
 
 			if (result.success) {
@@ -194,9 +224,9 @@ export default function MemberAreaScreen() {
 				setShowCreateModal(false);
 				setModalTitle('');
 				setModalContent('');
-				loadAnnouncements(); // Reload announcements
+				await loadAnnouncements(); // reload current tab announcements
 			} else {
-				Alert.alert('Error', result.message);
+				Alert.alert('Error', result.message || 'Failed to create announcement');
 			}
 		} catch (error) {
 			console.error('Error creating announcement:', error);
@@ -206,8 +236,23 @@ export default function MemberAreaScreen() {
 
 	const handleRSVP = async (eventId, attending) => {
 		try {
+			// optimistic update locally
+			setEvents((prev) =>
+				prev.map((ev) =>
+					ev.id === eventId
+						? {
+								...ev,
+								isAttending: attending,
+								attendees: attending
+									? ev.attendees + 1
+									: Math.max(ev.attendees - 1, 0),
+						  }
+						: ev
+				)
+			);
+
 			const response = await fetch(
-				`${API_BASE_URL}/mobile/member-dashboard.php?action=rsvp-event`,
+				`${API_BASE_URL}/member-dashboard.php?action=rsvp-event`,
 				{
 					method: 'POST',
 					headers: {
@@ -216,33 +261,54 @@ export default function MemberAreaScreen() {
 					body: JSON.stringify({
 						member_id: memberId,
 						event_id: eventId,
-						attending: attending,
+						attending: attending ? 1 : 0,
 					}),
 				}
 			);
 
+			if (!response.ok) {
+				throw new Error(`HTTP error! status: ${response.status}`);
+			}
+
 			const result = await response.json();
 
 			if (result.success) {
-				// Update local state
+				// server accepted RSVP — optionally refresh single event or all events
+				// we'll reload events to ensure canonical state (you can optimize to update only the changed event)
+				await loadEvents();
+			} else {
+				// revert optimistic update on failure
 				setEvents((prev) =>
-					prev.map((event) =>
-						event.id === eventId
+					prev.map((ev) =>
+						ev.id === eventId
 							? {
-									...event,
-									isAttending: attending,
+									...ev,
+									isAttending: !attending,
 									attendees: attending
-										? event.attendees + 1
-										: event.attendees - 1,
+										? Math.max(ev.attendees - 1, 0)
+										: ev.attendees + 1,
 							  }
-							: event
+							: ev
 					)
 				);
-			} else {
-				Alert.alert('Error', result.message);
+				Alert.alert('Error', result.message || 'Failed to update RSVP');
 			}
 		} catch (error) {
 			console.error('Error updating RSVP:', error);
+			// revert optimistic update on error
+			setEvents((prev) =>
+				prev.map((ev) =>
+					ev.id === eventId
+						? {
+								...ev,
+								isAttending: !attending,
+								attendees: attending
+									? Math.max(ev.attendees - 1, 0)
+									: ev.attendees + 1,
+						  }
+						: ev
+				)
+			);
 			Alert.alert('Error', 'Failed to update RSVP. Please try again.');
 		}
 	};
@@ -294,7 +360,7 @@ export default function MemberAreaScreen() {
 								styles.demographicTag,
 								{ backgroundColor: getAnnouncementColor(member?.demographic) },
 							]}>
-							{member?.demographic?.toUpperCase()}
+							{member?.demographic?.toUpperCase() ?? ''}
 						</Text>
 					</View>
 				</View>
@@ -407,7 +473,11 @@ export default function MemberAreaScreen() {
 			<Text style={styles.sectionTitle}>📌 Announcements</Text>
 			{renderAnnouncementTabs()}
 
-			{announcements.length === 0 ? (
+			{tabLoading ? (
+				<View style={styles.tabLoadingContainer}>
+					<Icon name='loading' size={30} color='#666' />
+				</View>
+			) : announcements.length === 0 ? (
 				<Text style={styles.emptyText}>No announcements yet.</Text>
 			) : (
 				announcements.map((announcement) => (
@@ -469,7 +539,11 @@ export default function MemberAreaScreen() {
 								]}
 								onPress={() => handleRSVP(event.id, !event.isAttending)}>
 								<Icon
-									name={event.isAttending ? 'check-circle-outline' : 'plus-circle-outline'}
+									name={
+										event.isAttending
+											? 'check-circle-outline'
+											: 'plus-circle-outline'
+									}
 									size={16}
 									color='#fff'
 								/>
@@ -496,7 +570,7 @@ export default function MemberAreaScreen() {
 					: member?.demographic === 'women'
 					? '👩'
 					: '👶'}{' '}
-				{member?.demographic?.toUpperCase()} Corner
+				{member?.demographic?.toUpperCase() ?? ''} Corner
 			</Text>
 			<View style={styles.resourceCard}>
 				<Text style={styles.resourceTitle}>Weekly Devotional</Text>
@@ -519,6 +593,22 @@ export default function MemberAreaScreen() {
 				<View style={styles.loadingContainer}>
 					<Icon name='loading' size={50} color='#fff' />
 					<Text style={styles.loadingText}>Loading your dashboard...</Text>
+				</View>
+			</ImageBackground>
+		);
+	}
+
+	if (!member) {
+		return (
+			<ImageBackground
+				source={require('../assets/bg.jpg')}
+				style={styles.background}>
+				<View style={styles.loadingContainer}>
+					<Icon name='alert-circle' size={50} color='#e63946' />
+					<Text style={styles.loadingText}>Failed to load member data</Text>
+					<TouchableOpacity style={styles.retryButton} onPress={loadMemberData}>
+						<Text style={styles.retryButtonText}>Retry</Text>
+					</TouchableOpacity>
 				</View>
 			</ImageBackground>
 		);

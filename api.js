@@ -1,7 +1,7 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import axios from 'axios';
 
-const BASE_URL = 'http://10.184.15.123:8000'; // your PHP backend URL
+const BASE_URL = 'http://10.130.134.148:8000'; // your PHP backend URL
 
 const api = axios.create({
 	baseURL: BASE_URL,

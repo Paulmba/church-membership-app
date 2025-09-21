@@ -664,4 +664,9 @@ export default StyleSheet.create({
 		marginBottom: 20,
 		fontStyle: 'italic',
 	},
+	tabLoadingContainer: {
+		justifyContent: 'center',
+		alignItems: 'center',
+		padding: 20,
+	},
 });

@@ -15,7 +15,7 @@ import {
 import Animated, { FadeInUp } from 'react-native-reanimated';
 import Icon from 'react-native-vector-icons/MaterialIcons';
 
-import api from '../api';
+import api from '../api'; // Axios instance
 import styles from '../styles/styles';
 import { AuthContext } from './AuthContext';
 
@@ -24,7 +24,7 @@ export default function LoginScreen() {
 	const [password, setPassword] = useState('');
 	const [loading, setLoading] = useState(false);
 	const router = useRouter();
-    const { login } = useContext(AuthContext);
+	const { login } = useContext(AuthContext);
 
 	const handleLogin = async () => {
 		if (!phone || !password) {
@@ -40,12 +40,13 @@ export default function LoginScreen() {
 			});
 
 			if (res.data.success) {
-				await login(res.data.token, res.data.member_id);
+				// Save token + member id
+				login(res.data.token, res.data.member_id);
 
 				if (res.data.needs_registration) {
 					router.push('/register');
 				} else {
-					router.push('/member-area'); // redirect to member-area if profile is ready
+					router.push('/member-area'); // redirect to a main screen
 				}
 			} else {
 				Alert.alert('Login Failed', res.data.message);
@@ -57,8 +58,14 @@ export default function LoginScreen() {
 		}
 	};
 
+	const handleCreateAccount = () => {
+		router.push('/create-account');
+	};
+
 	return (
-		<ImageBackground source={require('../assets/bg.jpg')} style={styles.background}>
+		<ImageBackground
+			source={require('../assets/bg.jpg')}
+			style={styles.background}>
 			<KeyboardAvoidingView
 				behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
 				style={{ flex: 1 }}>
@@ -104,7 +111,7 @@ export default function LoginScreen() {
 
 						<TouchableOpacity
 							style={styles.linkContainer}
-							onPress={() => router.push('/create-account')}>
+							onPress={handleCreateAccount}>
 							<Text style={styles.linkText}>New user? Create account</Text>
 						</TouchableOpacity>
 					</View>
