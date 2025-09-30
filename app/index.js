@@ -15,7 +15,7 @@ import {
 import Animated, { FadeInUp } from 'react-native-reanimated';
 import Icon from 'react-native-vector-icons/MaterialIcons';
 
-import api from '../api'; // Axios instance
+import apiService from '../api';
 import styles from '../styles/styles';
 import { AuthContext } from './AuthContext';
 
@@ -34,25 +34,29 @@ export default function LoginScreen() {
 
 		setLoading(true);
 		try {
-			const res = await api.post('/login.php', {
+			const res = await apiService.auth.login({
 				phone_number: phone,
 				password,
 			});
 
 			if (res.data.success) {
 				// Save token + member id
-				login(res.data.token, res.data.member_id);
+				await login(res.data.token, res.data.member_id);
 
 				if (res.data.needs_registration) {
-					router.push('/register');
+					router.replace('/register');
 				} else {
-					router.push('/member-area'); // redirect to a main screen
+					router.replace('/member-area');
 				}
 			} else {
 				Alert.alert('Login Failed', res.data.message);
 			}
 		} catch (error) {
-			Alert.alert('Error', 'Login request failed');
+			console.error('Login error:', error);
+			Alert.alert(
+				'Error',
+				error.response?.data?.message || 'Login request failed'
+			);
 		} finally {
 			setLoading(false);
 		}

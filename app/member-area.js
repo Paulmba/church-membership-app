@@ -16,11 +16,9 @@ import {
 } from 'react-native';
 import Animated, { FadeInUp } from 'react-native-reanimated';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
+import apiService from '../api';
 import styles from '../styles/styles';
 import { AuthContext } from './AuthContext';
-
-// API Configuration - Update this to match your server
-const API_BASE_URL = 'http://10.130.134.148:8000/api'; // adjust if needed
 
 export default function MemberAreaScreen() {
 	const router = useRouter();
@@ -45,11 +43,14 @@ export default function MemberAreaScreen() {
 			loadMemberData();
 		} else {
 			Alert.alert('Error', 'Member ID not found. Please login again.');
-			// give logout a moment to run
 			logout && logout();
 		}
-		// eslint-disable-next-line react-hooks/exhaustive-deps
 	}, [memberId]);
+
+	// Helper function to check if user can create announcements
+	const canCreateAnnouncement = () => {
+		return member?.isLeader === true || member?.isPastor === true;
+	};
 
 	const loadMemberData = async () => {
 		try {
@@ -70,20 +71,12 @@ export default function MemberAreaScreen() {
 
 	const loadMemberProfile = async () => {
 		try {
-			const response = await fetch(
-				`${API_BASE_URL}/member-dashboard.php?action=member-profile&member_id=${memberId}`
-			);
+			const response = await apiService.member.getProfile(memberId);
 
-			if (!response.ok) {
-				throw new Error(`HTTP error! status: ${response.status}`);
-			}
-
-			const result = await response.json();
-
-			if (result.success) {
-				setMember(result.data);
+			if (response.data.success) {
+				setMember(response.data.data);
 			} else {
-				throw new Error(result.message || 'Failed to load profile');
+				throw new Error(response.data.message || 'Failed to load profile');
 			}
 		} catch (error) {
 			console.error('Error loading member profile:', error);
@@ -94,24 +87,17 @@ export default function MemberAreaScreen() {
 	const loadAnnouncements = async (tab = activeTab) => {
 		try {
 			setTabLoading(true);
-			const response = await fetch(
-				`${API_BASE_URL}/member-dashboard.php?action=announcements&member_id=${memberId}&type=${tab}`
-			);
+			const response = await apiService.member.getAnnouncements(memberId, tab);
 
-			if (!response.ok) {
-				throw new Error(`HTTP error! status: ${response.status}`);
-			}
-
-			const result = await response.json();
-
-			if (result.success) {
-				setAnnouncements(result.data || []);
+			if (response.data.success) {
+				setAnnouncements(response.data.data || []);
 			} else {
-				throw new Error(result.message || 'Failed to load announcements');
+				throw new Error(
+					response.data.message || 'Failed to load announcements'
+				);
 			}
 		} catch (error) {
 			console.error('Error loading announcements:', error);
-			// keep existing announcements if any, but show console
 		} finally {
 			setTabLoading(false);
 		}
@@ -119,26 +105,17 @@ export default function MemberAreaScreen() {
 
 	const loadEvents = async () => {
 		try {
-			const response = await fetch(
-				`${API_BASE_URL}/member-dashboard.php?action=events&member_id=${memberId}`
-			);
+			const response = await apiService.member.getEvents(memberId);
 
-			if (!response.ok) {
-				throw new Error(`HTTP error! status: ${response.status}`);
-			}
-
-			const result = await response.json();
-
-			if (result.success) {
-				// ensure events array has numeric attendees and boolean isAttending
-				const normalized = (result.data || []).map((e) => ({
+			if (response.data.success) {
+				const normalized = (response.data.data || []).map((e) => ({
 					...e,
 					attendees: Number(e.attendees) || 0,
 					isAttending: !!e.isAttending,
 				}));
 				setEvents(normalized);
 			} else {
-				throw new Error(result.message || 'Failed to load events');
+				throw new Error(response.data.message || 'Failed to load events');
 			}
 		} catch (error) {
 			console.error('Error loading events:', error);
@@ -147,20 +124,14 @@ export default function MemberAreaScreen() {
 
 	const loadPrayerRequests = async () => {
 		try {
-			const response = await fetch(
-				`${API_BASE_URL}/member-dashboard.php?action=prayer-requests&member_id=${memberId}`
-			);
+			const response = await apiService.member.getPrayerRequests(memberId);
 
-			if (!response.ok) {
-				throw new Error(`HTTP error! status: ${response.status}`);
-			}
-
-			const result = await response.json();
-
-			if (result.success) {
-				setPrayerRequests(result.data || []);
+			if (response.data.success) {
+				setPrayerRequests(response.data.data || []);
 			} else {
-				throw new Error(result.message || 'Failed to load prayer requests');
+				throw new Error(
+					response.data.message || 'Failed to load prayer requests'
+				);
 			}
 		} catch (error) {
 			console.error('Error loading prayer requests:', error);
@@ -192,41 +163,37 @@ export default function MemberAreaScreen() {
 			return;
 		}
 
-		try {
-			const response = await fetch(
-				`${API_BASE_URL}/member-dashboard.php?action=create-announcement`,
-				{
-					method: 'POST',
-					headers: {
-						'Content-Type': 'application/json',
-					},
-					body: JSON.stringify({
-						member_id: memberId,
-						title: modalTitle,
-						content: modalContent,
-						type: activeTab === 'group' ? member?.demographic : activeTab,
-						is_urgent: false,
-						expiry_date: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000)
-							.toISOString()
-							.split('T')[0], // 30 days from now
-					}),
-				}
+		if (!canCreateAnnouncement()) {
+			Alert.alert(
+				'Error',
+				'You do not have permission to create announcements'
 			);
+			return;
+		}
 
-			if (!response.ok) {
-				throw new Error(`HTTP error! status: ${response.status}`);
-			}
+		try {
+			const response = await apiService.member.createAnnouncement({
+				member_id: memberId,
+				title: modalTitle,
+				content: modalContent,
+				type: activeTab === 'group' ? member?.demographic : activeTab,
+				is_urgent: false,
+				expiry_date: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000)
+					.toISOString()
+					.split('T')[0],
+			});
 
-			const result = await response.json();
-
-			if (result.success) {
+			if (response.data.success) {
 				Alert.alert('Success', 'Announcement created successfully');
 				setShowCreateModal(false);
 				setModalTitle('');
 				setModalContent('');
-				await loadAnnouncements(); // reload current tab announcements
+				await loadAnnouncements();
 			} else {
-				Alert.alert('Error', result.message || 'Failed to create announcement');
+				Alert.alert(
+					'Error',
+					response.data.message || 'Failed to create announcement'
+				);
 			}
 		} catch (error) {
 			console.error('Error creating announcement:', error);
@@ -236,7 +203,7 @@ export default function MemberAreaScreen() {
 
 	const handleRSVP = async (eventId, attending) => {
 		try {
-			// optimistic update locally
+			// Optimistic update
 			setEvents((prev) =>
 				prev.map((ev) =>
 					ev.id === eventId
@@ -251,33 +218,16 @@ export default function MemberAreaScreen() {
 				)
 			);
 
-			const response = await fetch(
-				`${API_BASE_URL}/member-dashboard.php?action=rsvp-event`,
-				{
-					method: 'POST',
-					headers: {
-						'Content-Type': 'application/json',
-					},
-					body: JSON.stringify({
-						member_id: memberId,
-						event_id: eventId,
-						attending: attending ? 1 : 0,
-					}),
-				}
-			);
+			const response = await apiService.member.rsvpEvent({
+				member_id: memberId,
+				event_id: eventId,
+				attending: attending ? 1 : 0,
+			});
 
-			if (!response.ok) {
-				throw new Error(`HTTP error! status: ${response.status}`);
-			}
-
-			const result = await response.json();
-
-			if (result.success) {
-				// server accepted RSVP — optionally refresh single event or all events
-				// we'll reload events to ensure canonical state (you can optimize to update only the changed event)
+			if (response.data.success) {
 				await loadEvents();
 			} else {
-				// revert optimistic update on failure
+				// Revert on failure
 				setEvents((prev) =>
 					prev.map((ev) =>
 						ev.id === eventId
@@ -291,11 +241,11 @@ export default function MemberAreaScreen() {
 							: ev
 					)
 				);
-				Alert.alert('Error', result.message || 'Failed to update RSVP');
+				Alert.alert('Error', response.data.message || 'Failed to update RSVP');
 			}
 		} catch (error) {
 			console.error('Error updating RSVP:', error);
-			// revert optimistic update on error
+			// Revert on error
 			setEvents((prev) =>
 				prev.map((ev) =>
 					ev.id === eventId
@@ -374,7 +324,7 @@ export default function MemberAreaScreen() {
 			style={styles.quickActionsSection}>
 			<Text style={styles.sectionTitle}>Quick Actions</Text>
 			<View style={styles.actionGrid}>
-				{member?.isLeader && (
+				{canCreateAnnouncement() && (
 					<TouchableOpacity
 						style={[styles.actionCard, { backgroundColor: '#3498db' }]}
 						onPress={() => setShowCreateModal(true)}>
@@ -397,7 +347,7 @@ export default function MemberAreaScreen() {
 					<Text style={styles.actionText}>Prayer Wall</Text>
 				</TouchableOpacity>
 
-				{member?.isLeader && (
+				{canCreateAnnouncement() && (
 					<TouchableOpacity
 						style={[styles.actionCard, { backgroundColor: '#f39c12' }]}
 						onPress={() => router.push('/group-members')}>
@@ -445,7 +395,7 @@ export default function MemberAreaScreen() {
 				</Text>
 			</TouchableOpacity>
 
-			{member?.isLeader && (
+			{canCreateAnnouncement() && (
 				<TouchableOpacity
 					style={[styles.tab, activeTab === 'leadership' && styles.activeTab]}
 					onPress={() => handleTabChange('leadership')}>
@@ -630,7 +580,6 @@ export default function MemberAreaScreen() {
 					{renderUpcomingEvents()}
 					{renderDemographicCorner()}
 
-					{/* Logout Button */}
 					<Animated.View
 						entering={FadeInUp.duration(1100)}
 						style={styles.logoutSection}>
@@ -644,7 +593,6 @@ export default function MemberAreaScreen() {
 				</ScrollView>
 			</KeyboardAvoidingView>
 
-			{/* Create Announcement Modal */}
 			<Modal
 				visible={showCreateModal}
 				animationType='slide'
