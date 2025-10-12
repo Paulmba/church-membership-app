@@ -5,12 +5,10 @@ import {
 	Image,
 	ImageBackground,
 	KeyboardAvoidingView,
-	Modal,
 	Platform,
 	RefreshControl,
 	ScrollView,
 	Text,
-	TextInput,
 	TouchableOpacity,
 	View,
 } from 'react-native';
@@ -26,17 +24,11 @@ export default function MemberAreaScreen() {
 
 	const [refreshing, setRefreshing] = useState(false);
 	const [activeTab, setActiveTab] = useState('general');
-	const [showCreateModal, setShowCreateModal] = useState(false);
 	const [member, setMember] = useState(null);
 	const [announcements, setAnnouncements] = useState([]);
 	const [events, setEvents] = useState([]);
-	const [prayerRequests, setPrayerRequests] = useState([]);
 	const [loading, setLoading] = useState(true);
 	const [tabLoading, setTabLoading] = useState(false);
-
-	// Modal form state
-	const [modalTitle, setModalTitle] = useState('');
-	const [modalContent, setModalContent] = useState('');
 
 	useEffect(() => {
 		if (memberId) {
@@ -47,11 +39,6 @@ export default function MemberAreaScreen() {
 		}
 	}, [memberId]);
 
-	// Helper function to check if user can create announcements
-	const canCreateAnnouncement = () => {
-		return member?.isLeader === true || member?.isPastor === true;
-	};
-
 	const loadMemberData = async () => {
 		try {
 			setLoading(true);
@@ -59,7 +46,6 @@ export default function MemberAreaScreen() {
 				loadMemberProfile(),
 				loadAnnouncements(activeTab),
 				loadEvents(),
-				loadPrayerRequests(),
 			]);
 		} catch (error) {
 			console.error('Error loading member data:', error);
@@ -122,22 +108,6 @@ export default function MemberAreaScreen() {
 		}
 	};
 
-	const loadPrayerRequests = async () => {
-		try {
-			const response = await apiService.member.getPrayerRequests(memberId);
-
-			if (response.data.success) {
-				setPrayerRequests(response.data.data || []);
-			} else {
-				throw new Error(
-					response.data.message || 'Failed to load prayer requests'
-				);
-			}
-		} catch (error) {
-			console.error('Error loading prayer requests:', error);
-		}
-	};
-
 	const handleRefresh = async () => {
 		setRefreshing(true);
 		await loadMemberData();
@@ -155,50 +125,6 @@ export default function MemberAreaScreen() {
 		if (newTab === activeTab) return;
 		setActiveTab(newTab);
 		await loadAnnouncements(newTab);
-	};
-
-	const handleCreateAnnouncement = async () => {
-		if (!modalTitle.trim() || !modalContent.trim()) {
-			Alert.alert('Error', 'Please fill in both title and content');
-			return;
-		}
-
-		if (!canCreateAnnouncement()) {
-			Alert.alert(
-				'Error',
-				'You do not have permission to create announcements'
-			);
-			return;
-		}
-
-		try {
-			const response = await apiService.member.createAnnouncement({
-				member_id: memberId,
-				title: modalTitle,
-				content: modalContent,
-				type: activeTab === 'group' ? member?.demographic : activeTab,
-				is_urgent: false,
-				expiry_date: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000)
-					.toISOString()
-					.split('T')[0],
-			});
-
-			if (response.data.success) {
-				Alert.alert('Success', 'Announcement created successfully');
-				setShowCreateModal(false);
-				setModalTitle('');
-				setModalContent('');
-				await loadAnnouncements();
-			} else {
-				Alert.alert(
-					'Error',
-					response.data.message || 'Failed to create announcement'
-				);
-			}
-		} catch (error) {
-			console.error('Error creating announcement:', error);
-			Alert.alert('Error', 'Failed to create announcement. Please try again.');
-		}
 	};
 
 	const handleRSVP = async (eventId, attending) => {
@@ -303,7 +229,7 @@ export default function MemberAreaScreen() {
 				</View>
 				<View style={styles.profileInfo}>
 					<Text style={styles.memberName}>Welcome, {member?.name}</Text>
-					<Text style={styles.memberRole}>{member?.role}</Text>
+					<Text style={styles.memberRole}>Member</Text>
 					<View style={styles.tagContainer}>
 						<Text
 							style={[
@@ -324,15 +250,6 @@ export default function MemberAreaScreen() {
 			style={styles.quickActionsSection}>
 			<Text style={styles.sectionTitle}>Quick Actions</Text>
 			<View style={styles.actionGrid}>
-				{canCreateAnnouncement() && (
-					<TouchableOpacity
-						style={[styles.actionCard, { backgroundColor: '#3498db' }]}
-						onPress={() => setShowCreateModal(true)}>
-						<Icon name='plus-box' size={24} color='#fff' />
-						<Text style={styles.actionText}>Create Announcement</Text>
-					</TouchableOpacity>
-				)}
-
 				<TouchableOpacity
 					style={[styles.actionCard, { backgroundColor: '#27ae60' }]}
 					onPress={() => router.push('/events')}>
@@ -341,20 +258,11 @@ export default function MemberAreaScreen() {
 				</TouchableOpacity>
 
 				<TouchableOpacity
-					style={[styles.actionCard, { backgroundColor: '#9b59b6' }]}
-					onPress={() => router.push('/prayer-wall')}>
-					<Icon name='hand-heart' size={24} color='#fff' />
-					<Text style={styles.actionText}>Prayer Wall</Text>
+					style={[styles.actionCard, { backgroundColor: '#3498db' }]}
+					onPress={() => router.push('/profile')}>
+					<Icon name='account-circle' size={24} color='#fff' />
+					<Text style={styles.actionText}>My Profile</Text>
 				</TouchableOpacity>
-
-				{canCreateAnnouncement() && (
-					<TouchableOpacity
-						style={[styles.actionCard, { backgroundColor: '#f39c12' }]}
-						onPress={() => router.push('/group-members')}>
-						<Icon name='account-multiple' size={24} color='#fff' />
-						<Text style={styles.actionText}>My Group</Text>
-					</TouchableOpacity>
-				)}
 			</View>
 		</Animated.View>
 	);
@@ -394,25 +302,6 @@ export default function MemberAreaScreen() {
 					My Group
 				</Text>
 			</TouchableOpacity>
-
-			{canCreateAnnouncement() && (
-				<TouchableOpacity
-					style={[styles.tab, activeTab === 'leadership' && styles.activeTab]}
-					onPress={() => handleTabChange('leadership')}>
-					<Icon
-						name='crown-outline'
-						size={16}
-						color={activeTab === 'leadership' ? '#fff' : '#666'}
-					/>
-					<Text
-						style={[
-							styles.tabText,
-							activeTab === 'leadership' && styles.activeTabText,
-						]}>
-						Leadership
-					</Text>
-				</TouchableOpacity>
-			)}
 		</View>
 	);
 
@@ -528,9 +417,6 @@ export default function MemberAreaScreen() {
 					This week's theme: "Walking in Faith" - Join your{' '}
 					{member?.demographic} group for special studies and fellowship.
 				</Text>
-				<TouchableOpacity style={styles.resourceButton}>
-					<Text style={styles.resourceButtonText}>Read More</Text>
-				</TouchableOpacity>
 			</View>
 		</Animated.View>
 	);
@@ -592,55 +478,6 @@ export default function MemberAreaScreen() {
 					</Animated.View>
 				</ScrollView>
 			</KeyboardAvoidingView>
-
-			<Modal
-				visible={showCreateModal}
-				animationType='slide'
-				transparent={true}
-				onRequestClose={() => setShowCreateModal(false)}>
-				<View style={styles.modalOverlay}>
-					<View style={styles.modalContent}>
-						<View style={styles.modalHeader}>
-							<Text style={styles.modalTitle}>Create Announcement</Text>
-							<TouchableOpacity onPress={() => setShowCreateModal(false)}>
-								<Icon name='close' size={24} color='#666' />
-							</TouchableOpacity>
-						</View>
-
-						<TextInput
-							style={styles.modalInput}
-							placeholder='Announcement Title'
-							placeholderTextColor='#999'
-							value={modalTitle}
-							onChangeText={setModalTitle}
-						/>
-
-						<TextInput
-							style={[styles.modalInput, styles.modalTextArea]}
-							placeholder='Announcement Content'
-							multiline
-							numberOfLines={4}
-							placeholderTextColor='#999'
-							value={modalContent}
-							onChangeText={setModalContent}
-						/>
-
-						<View style={styles.modalButtons}>
-							<TouchableOpacity
-								style={styles.modalCancelButton}
-								onPress={() => setShowCreateModal(false)}>
-								<Text style={styles.modalCancelText}>Cancel</Text>
-							</TouchableOpacity>
-
-							<TouchableOpacity
-								style={styles.modalSubmitButton}
-								onPress={handleCreateAnnouncement}>
-								<Text style={styles.modalSubmitText}>Post Announcement</Text>
-							</TouchableOpacity>
-						</View>
-					</View>
-				</View>
-			</Modal>
 		</View>
 	);
 }

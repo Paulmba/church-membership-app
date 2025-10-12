@@ -1,5 +1,5 @@
 <?php
-// login.php
+// login.php - Simplified without role-based access control
 header('Content-Type: application/json');
 header('Access-Control-Allow-Origin: *');
 header('Access-Control-Allow-Methods: POST');
@@ -11,7 +11,7 @@ require __DIR__ . '/vendor/autoload.php';
 use Firebase\JWT\JWT;
 
 // Load secret key from environment variable (recommended)
-$secret_key = getenv('JWT_SECRET_KEY') ?: "197b7ca74482c4000c46ae8a88d5fe111cefe05e4f4c01407c82216c189b2955"; // fallback for development
+$secret_key = getenv('JWT_SECRET_KEY') ?: "197b7ca74482c4000c46ae8a88d5fe111cefe05e4f4c01407c82216c189b2955";
 
 $data = json_decode(file_get_contents("php://input"), true);
 
@@ -24,7 +24,7 @@ $phone_number = trim($data['phone_number']);
 $password = $data['password'];
 
 try {
-    // ✅ Use prepared statement with PDO
+    // Use prepared statement with PDO
     $stmt = $pdo->prepare("
         SELECT mu.password, mu.is_verified, mu.mid, 
                m.profile_completed, m.first_name, m.last_name
@@ -41,13 +41,13 @@ try {
         exit;
     }
 
-    // ✅ Verify password
+    // Verify password
     if (!password_verify($password, $row['password'])) {
         echo json_encode(['success' => false, 'message' => 'Incorrect password']);
         exit;
     }
 
-    // ✅ Check if phone number is verified
+    // Check if phone number is verified
     if (!$row['is_verified']) {
         echo json_encode(['success' => false, 'message' => 'Please verify your phone number first']);
         exit;
@@ -56,7 +56,7 @@ try {
     $has_member_record = !is_null($row['mid']);
     $needs_registration = !$has_member_record;
 
-    // ✅ JWT payload
+    // JWT payload - simplified without roles
     $issued_at = time();
     $expire = $issued_at + (60 * 60); // 1 hour
     $payload = [
@@ -67,7 +67,7 @@ try {
         "phone_number" => $phone_number
     ];
 
-    // ✅ Generate JWT
+    // Generate JWT
     $jwt = JWT::encode($payload, $secret_key, 'HS256');
 
     echo json_encode([

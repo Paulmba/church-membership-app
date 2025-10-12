@@ -1,10 +1,10 @@
-// services/api.js - Complete API client with automatic token management
+// services/api.js - Simplified API client without role management
 
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import axios from 'axios';
 import { jwtDecode } from 'jwt-decode';
 
-const API_BASE_URL = 'http://10.124.181.123:8000';
+const API_BASE_URL = 'http://10.122.31.123:8000';
 
 // Create axios instance
 const api = axios.create({
@@ -36,39 +36,36 @@ const refreshToken = async () => {
 			throw new Error('Missing refresh credentials');
 		}
 
-		const response = await axios.post(`${API_BASE_URL}/refresh-token.php`, {
-			token: currentToken,
-			member_id: memberId,
-		});
+		// Make refresh request WITHOUT using the axios instance (to avoid interceptor loop)
+		const response = await axios.post(
+			`${API_BASE_URL}/refresh-token.php`,
+			{
+				token: currentToken,
+				member_id: memberId,
+			},
+			{
+				headers: {
+					'Content-Type': 'application/json',
+				},
+			}
+		);
 
 		if (response.data.success) {
-			const {
-				token: newToken,
-				roles = [],
-				isLeader = false,
-				isPastor = false,
-			} = response.data;
+			const { token: newToken } = response.data;
 
-			await AsyncStorage.multiSet([
-				['token', newToken],
-				['user_roles', JSON.stringify(roles)],
-				['is_leader', String(isLeader)],
-				['is_pastor', String(isPastor)],
-			]);
+			await AsyncStorage.setItem('token', newToken);
 
 			return newToken;
 		} else {
 			throw new Error(response.data.message || 'Token refresh failed');
 		}
 	} catch (error) {
+		console.error(
+			'Token refresh error:',
+			error.response?.data || error.message
+		);
 		// Clear stored data on refresh failure
-		await AsyncStorage.multiRemove([
-			'token',
-			'member_id',
-			'user_roles',
-			'is_leader',
-			'is_pastor',
-		]);
+		await AsyncStorage.multiRemove(['token', 'member_id']);
 		throw error;
 	}
 };
@@ -168,44 +165,8 @@ const apiService = {
 				params: { action: 'events', member_id: memberId },
 			}),
 
-		getPrayerRequests: (memberId) =>
-			api.get(`/member-dashboard.php`, {
-				params: { action: 'prayer-requests', member_id: memberId },
-			}),
-
-		createAnnouncement: (data) =>
-			api.post('/member-dashboard.php?action=create-announcement', data),
-
 		rsvpEvent: (data) =>
 			api.post('/member-dashboard.php?action=rsvp-event', data),
-
-		createPrayerRequest: (data) =>
-			api.post('/member-dashboard.php?action=create-prayer-request', data),
-	},
-
-	// Leadership endpoints (requires leader role)
-	leadership: {
-		getStats: () =>
-			api.get('/member-dashboard.php', {
-				params: { action: 'leadership-stats' },
-			}),
-
-		createEvent: (data) =>
-			api.post('/member-dashboard.php?action=create-event', data),
-
-		getMembers: (groupId) =>
-			api.get('/member-dashboard.php', {
-				params: { action: 'group-members', group_id: groupId },
-			}),
-	},
-
-	// Admin endpoints (requires pastor role)
-	admin: {
-		getUsers: () =>
-			api.get('/member-dashboard.php', { params: { action: 'admin-users' } }),
-
-		manageUser: (data) =>
-			api.post('/member-dashboard.php?action=manage-user', data),
 	},
 
 	// Generic authenticated requests

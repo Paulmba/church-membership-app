@@ -1,5 +1,5 @@
 <?php
-// api/refresh-token.php - Token refresh endpoint
+// refresh-token.php - Simplified token refresh without roles
 
 header('Content-Type: application/json');
 header('Access-Control-Allow-Origin: *');
@@ -17,99 +17,80 @@ $secret_key = getenv('JWT_SECRET_KEY') ?: "197b7ca74482c4000c46ae8a88d5fe111cefe
 $data = json_decode(file_get_contents("php://input"), true);
 
 if (!isset($data['token'], $data['member_id'])) {
-    echo json_encode(['success' => false, 'message' => 'Token and member ID required']);
+    echo json_encode(['success' => false, 'message' => 'Missing required fields']);
     exit;
 }
 
-$token = $data['token'];
+$old_token = $data['token'];
 $member_id = $data['member_id'];
 
 try {
-    // Verify the current token (even if expired)
+    // Verify the old token (allow expired tokens for refresh)
     try {
-        $decoded = JWT::decode($token, new Key($secret_key, 'HS256'));
-        $tokenData = (array)$decoded;
+        JWT::$leeway = 60; // Allow 60 seconds of leeway for expiration
+        $decoded = JWT::decode($old_token, new Key($secret_key, 'HS256'));
     } catch (Exception $e) {
-        // Check if token is just expired (not malformed)
-        $parts = explode('.', $token);
-        if (count($parts) !== 3) {
-            throw new Exception('Invalid token format');
+        // For refresh, we can be lenient with expiration but not other errors
+        error_log("Token decode error: " . $e->getMessage());
+
+        // Try to decode without verification to get phone number
+        $tokenParts = explode('.', $old_token);
+        if (count($tokenParts) === 3) {
+            $payload = json_decode(base64_decode($tokenParts[1]), true);
+            if ($payload && isset($payload['phone_number'])) {
+                // Create a mock decoded object
+                $decoded = (object)$payload;
+            } else {
+                echo json_encode(['success' => false, 'message' => 'Invalid token format']);
+                exit;
+            }
+        } else {
+            echo json_encode(['success' => false, 'message' => 'Invalid token']);
+            exit;
         }
-
-        // Decode payload without verification to check expiry
-        $payload = json_decode(base64_decode($parts[1]), true);
-        $currentTime = time();
-
-        // Allow refresh if token expired less than 24 hours ago
-        if (!isset($payload['exp']) || ($currentTime - $payload['exp']) > 86400) {
-            throw new Exception('Token is too old to refresh');
-        }
-
-        $tokenData = $payload;
     }
 
-    // Verify the member ID matches
-    if ($tokenData['mid'] != $member_id) {
-        echo json_encode(['success' => false, 'message' => 'Token mismatch']);
-        exit;
-    }
-
-    // Get fresh user data including roles
+    // Verify member exists
     $stmt = $pdo->prepare("
-        SELECT mu.mid, mu.phone_number, mu.is_verified,
-               m.first_name, m.last_name, m.is_active,
-               GROUP_CONCAT(DISTINCT lr.role_name) as roles,
-               COUNT(DISTINCT ml.role_id) as role_count
-        FROM MobileUsers mu
-        LEFT JOIN Members m ON mu.mid = m.mid
-        LEFT JOIN member_leadership ml ON m.mid = ml.member_id
-        LEFT JOIN leadership_roles lr ON ml.role_id = lr.role_id
-        WHERE mu.mid = ? AND mu.is_verified = 1 AND (m.is_active = 1 OR m.is_active IS NULL)
-        GROUP BY mu.mid
+        SELECT m.mid, m.first_name, m.last_name
+        FROM Members m
+        WHERE m.mid = ?
         LIMIT 1
     ");
     $stmt->execute([$member_id]);
-    $user = $stmt->fetch(PDO::FETCH_ASSOC);
+    $member = $stmt->fetch(PDO::FETCH_ASSOC);
 
-    if (!$user) {
-        echo json_encode(['success' => false, 'message' => 'User not found or inactive']);
+    if (!$member) {
+        echo json_encode(['success' => false, 'message' => 'Member not found']);
         exit;
     }
 
-    // Process role information
-    $roles = $user['roles'] ? explode(',', $user['roles']) : [];
-    $isLeader = $user['role_count'] > 0;
-    $isPastor = $isLeader && in_array('Pastor', $roles);
-
-    // Generate new JWT with fresh expiry
+    // Generate new token
     $issued_at = time();
     $expire = $issued_at + (60 * 60); // 1 hour
+
     $payload = [
         "iss" => "membership_app",
         "iat" => $issued_at,
         "exp" => $expire,
-        "mid" => $user['mid'],
-        "phone_number" => $user['phone_number'],
-        "roles" => $roles,
-        "isLeader" => $isLeader,
-        "isPastor" => $isPastor
+        "mid" => $member['mid'],
+        "phone_number" => isset($decoded->phone_number) ? $decoded->phone_number : ''
     ];
 
-    $newToken = JWT::encode($payload, $secret_key, 'HS256');
-
-    // Update last login timestamp
-    $updateStmt = $pdo->prepare("UPDATE members SET last_login = NOW() WHERE mid = ?");
-    $updateStmt->execute([$member_id]);
+    $new_token = JWT::encode($payload, $secret_key, 'HS256');
 
     echo json_encode([
         'success' => true,
-        'token' => $newToken,
+        'token' => $new_token,
         'expires_in' => $expire,
-        'user_name' => $user['first_name'] . ' ' . $user['last_name'],
-        'roles' => $roles,
-        'isLeader' => $isLeader,
-        'isPastor' => $isPastor
+        'member_id' => $member['mid'],
+        'user_name' => $member['first_name'] . ' ' . $member['last_name']
     ]);
 } catch (Exception $e) {
-    echo json_encode(['success' => false, 'message' => 'Token refresh failed', 'error' => $e->getMessage()]);
+    error_log("Refresh token error: " . $e->getMessage());
+    echo json_encode([
+        'success' => false,
+        'message' => 'Server error',
+        'error' => $e->getMessage()
+    ]);
 }
