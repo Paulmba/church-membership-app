@@ -1,5 +1,10 @@
 <?php
 // login.php - Simplified without role-based access control
+
+// Log requests for debugging
+file_put_contents('log.txt', "Login request received at " . date('Y-m-d H:i:s') . "\n", FILE_APPEND);
+file_put_contents('log.txt', "Request body: " . file_get_contents("php://input") . "\n", FILE_APPEND);
+
 header('Content-Type: application/json');
 header('Access-Control-Allow-Origin: *');
 header('Access-Control-Allow-Methods: POST');

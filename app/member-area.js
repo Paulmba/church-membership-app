@@ -26,7 +26,7 @@ export default function MemberAreaScreen() {
 	const [activeTab, setActiveTab] = useState('general');
 	const [member, setMember] = useState(null);
 	const [announcements, setAnnouncements] = useState([]);
-	const [events, setEvents] = useState([]);
+	
 	const [loading, setLoading] = useState(true);
 	const [tabLoading, setTabLoading] = useState(false);
 
@@ -45,7 +45,6 @@ export default function MemberAreaScreen() {
 			await Promise.all([
 				loadMemberProfile(),
 				loadAnnouncements(activeTab),
-				loadEvents(),
 			]);
 		} catch (error) {
 			console.error('Error loading member data:', error);
@@ -89,24 +88,6 @@ export default function MemberAreaScreen() {
 		}
 	};
 
-	const loadEvents = async () => {
-		try {
-			const response = await apiService.member.getEvents(memberId);
-
-			if (response.data.success) {
-				const normalized = (response.data.data || []).map((e) => ({
-					...e,
-					attendees: Number(e.attendees) || 0,
-					isAttending: !!e.isAttending,
-				}));
-				setEvents(normalized);
-			} else {
-				throw new Error(response.data.message || 'Failed to load events');
-			}
-		} catch (error) {
-			console.error('Error loading events:', error);
-		}
-	};
 
 	const handleRefresh = async () => {
 		setRefreshing(true);
@@ -127,67 +108,6 @@ export default function MemberAreaScreen() {
 		await loadAnnouncements(newTab);
 	};
 
-	const handleRSVP = async (eventId, attending) => {
-		try {
-			// Optimistic update
-			setEvents((prev) =>
-				prev.map((ev) =>
-					ev.id === eventId
-						? {
-								...ev,
-								isAttending: attending,
-								attendees: attending
-									? ev.attendees + 1
-									: Math.max(ev.attendees - 1, 0),
-						  }
-						: ev
-				)
-			);
-
-			const response = await apiService.member.rsvpEvent({
-				member_id: memberId,
-				event_id: eventId,
-				attending: attending ? 1 : 0,
-			});
-
-			if (response.data.success) {
-				await loadEvents();
-			} else {
-				// Revert on failure
-				setEvents((prev) =>
-					prev.map((ev) =>
-						ev.id === eventId
-							? {
-									...ev,
-									isAttending: !attending,
-									attendees: attending
-										? Math.max(ev.attendees - 1, 0)
-										: ev.attendees + 1,
-							  }
-							: ev
-					)
-				);
-				Alert.alert('Error', response.data.message || 'Failed to update RSVP');
-			}
-		} catch (error) {
-			console.error('Error updating RSVP:', error);
-			// Revert on error
-			setEvents((prev) =>
-				prev.map((ev) =>
-					ev.id === eventId
-						? {
-								...ev,
-								isAttending: !attending,
-								attendees: attending
-									? Math.max(ev.attendees - 1, 0)
-									: ev.attendees + 1,
-						  }
-						: ev
-				)
-			);
-			Alert.alert('Error', 'Failed to update RSVP. Please try again.');
-		}
-	};
 
 	const getAnnouncementColor = (type) => {
 		switch (type) {
@@ -250,18 +170,19 @@ export default function MemberAreaScreen() {
 			style={styles.quickActionsSection}>
 			<Text style={styles.sectionTitle}>Quick Actions</Text>
 			<View style={styles.actionGrid}>
-				<TouchableOpacity
-					style={[styles.actionCard, { backgroundColor: '#27ae60' }]}
-					onPress={() => router.push('/events')}>
-					<Icon name='calendar-month' size={24} color='#fff' />
-					<Text style={styles.actionText}>View Events</Text>
-				</TouchableOpacity>
 
 				<TouchableOpacity
 					style={[styles.actionCard, { backgroundColor: '#3498db' }]}
 					onPress={() => router.push('/profile')}>
 					<Icon name='account-circle' size={24} color='#fff' />
 					<Text style={styles.actionText}>My Profile</Text>
+				</TouchableOpacity>
+
+                <TouchableOpacity
+					style={[styles.actionCard, { backgroundColor: '#f39c12' }]}
+					onPress={() => router.push('/announcements')}>
+					<Icon name='bullhorn' size={24} color='#fff' />
+					<Text style={styles.actionText}>Announcements</Text>
 				</TouchableOpacity>
 			</View>
 		</Animated.View>
@@ -349,53 +270,6 @@ export default function MemberAreaScreen() {
 		</Animated.View>
 	);
 
-	const renderUpcomingEvents = () => (
-		<Animated.View
-			entering={FadeInUp.duration(900)}
-			style={styles.eventsSection}>
-			<Text style={styles.sectionTitle}>📅 Upcoming Events</Text>
-			{events.length === 0 ? (
-				<Text style={styles.emptyText}>No upcoming events.</Text>
-			) : (
-				events.map((event) => (
-					<View key={event.id} style={styles.eventCard}>
-						<View style={styles.eventHeader}>
-							<Text style={styles.eventTitle}>{event.title}</Text>
-							<Text style={styles.eventDate}>{event.date}</Text>
-						</View>
-						<Text style={styles.eventDetails}>
-							🕐 {event.time} • 📍 {event.location}
-						</Text>
-						<Text style={styles.eventAttendees}>
-							👥 {event.attendees} attending
-						</Text>
-
-						<View style={styles.rsvpButtons}>
-							<TouchableOpacity
-								style={[
-									styles.rsvpButton,
-									event.isAttending && styles.attendingButton,
-								]}
-								onPress={() => handleRSVP(event.id, !event.isAttending)}>
-								<Icon
-									name={
-										event.isAttending
-											? 'check-circle-outline'
-											: 'plus-circle-outline'
-									}
-									size={16}
-									color='#fff'
-								/>
-								<Text style={styles.rsvpText}>
-									{event.isAttending ? 'Attending' : 'Join Event'}
-								</Text>
-							</TouchableOpacity>
-						</View>
-					</View>
-				))
-			)}
-		</Animated.View>
-	);
 
 	const renderDemographicCorner = () => (
 		<Animated.View
@@ -463,7 +337,7 @@ export default function MemberAreaScreen() {
 					{renderHeader()}
 					{renderQuickActions()}
 					{renderAnnouncements()}
-					{renderUpcomingEvents()}
+					
 					{renderDemographicCorner()}
 
 					<Animated.View

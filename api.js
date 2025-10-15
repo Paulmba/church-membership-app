@@ -4,7 +4,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import axios from 'axios';
 import { jwtDecode } from 'jwt-decode';
 
-const API_BASE_URL = 'http://10.122.31.123:8000';
+import API_BASE_URL from './config';
 
 // Create axios instance
 const api = axios.create({
@@ -32,10 +32,9 @@ const refreshToken = async () => {
 		const currentToken = await AsyncStorage.getItem('token');
 		const memberId = await AsyncStorage.getItem('member_id');
 
-		if (!currentToken || !memberId) {
-			throw new Error('Missing refresh credentials');
-		}
-
+		        if (!currentToken || !memberId) {
+		            return null; // Don't try to refresh if logged out
+		        }
 		// Make refresh request WITHOUT using the axios instance (to avoid interceptor loop)
 		const response = await axios.post(
 			`${API_BASE_URL}/refresh-token.php`,
@@ -160,13 +159,6 @@ const apiService = {
 				params: { action: 'announcements', member_id: memberId, type },
 			}),
 
-		getEvents: (memberId) =>
-			api.get(`/member-dashboard.php`, {
-				params: { action: 'events', member_id: memberId },
-			}),
-
-		rsvpEvent: (data) =>
-			api.post('/member-dashboard.php?action=rsvp-event', data),
 	},
 
 	// Generic authenticated requests

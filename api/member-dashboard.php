@@ -1,6 +1,11 @@
 <?php
 // member-dashboard-minimal.php - Absolute minimal version that should work
 
+// Log requests for debugging
+file_put_contents('member-dashboard-log.txt', "Request received at " . date('Y-m-d H:i:s') . "\n", FILE_APPEND);
+file_put_contents('member-dashboard-log.txt', "Request method: " . $_SERVER['REQUEST_METHOD'] . "\n", FILE_APPEND);
+file_put_contents('member-dashboard-log.txt', "Query string: " . $_SERVER['QUERY_STRING'] . "\n", FILE_APPEND);
+
 header("Access-Control-Allow-Origin: *");
 header("Content-Type: application/json; charset=UTF-8");
 header("Access-Control-Allow-Methods: GET, POST, OPTIONS");
@@ -95,10 +100,10 @@ try {
         else if ($action === 'announcements') {
             $type = isset($_GET['type']) ? $_GET['type'] : 'general';
 
-            // Get member demographic first
+            // Get member demographic
             $demographic = 'general';
             try {
-                $stmt = $pdo->prepare("SELECT dob, gender FROM Members WHERE mid = ?");
+                $stmt = $pdo->prepare("SELECT dob, gender FROM Members WHERE phone_number = ?");
                 $stmt->execute([$member_id]);
                 $member = $stmt->fetch(PDO::FETCH_ASSOC);
 
@@ -106,31 +111,39 @@ try {
                     $dob = new DateTime($member['dob']);
                     $now = new DateTime();
                     $age = $now->diff($dob)->y;
-                    $gender = $member['gender'];
+                    $gender = strtolower($member['gender']);
 
                     if ($age < 18) $demographic = 'children';
                     elseif ($age <= 35) $demographic = 'youth';
-                    elseif ($gender === 'M' || $gender === 'male') $demographic = 'men';
-                    elseif ($gender === 'F' || $gender === 'female') $demographic = 'women';
+                    elseif ($gender === 'm' || $gender === 'male') $demographic = 'men';
+                    elseif ($gender === 'f' || $gender === 'female') $demographic = 'women';
                 }
             } catch (Exception $e) {
                 // Use default demographic
             }
 
-            // Build query
+            // Build query based on tab
             $where = "expiry_date > NOW()";
             $params = [];
 
             if ($type === 'general') {
-                $where .= " AND type = 'general'";
+                // Show only general announcements
+                $where .= " AND (type = 'general' OR type IS NULL OR target_demographic = 'all')";
             } elseif ($type === 'group') {
-                $where .= " AND type = ?";
+                // Show announcements for member's demographic group
+                $where .= " AND (target_demographic = ? OR type = ?)";
+                $params[] = $demographic;
                 $params[] = $demographic;
             }
 
-            $query = "SELECT id, title, content, type, is_urgent, created_at,
-                             COALESCE((SELECT CONCAT(first_name, ' ', last_name) FROM Members WHERE mid = announcements.created_by), 'Admin') as author,
-                             DATE_FORMAT(created_at, '%Y-%m-%d') as date
+            $query = "SELECT 
+                        id, 
+                        title, 
+                        content, 
+                        COALESCE(type, 'general') as type,
+                        COALESCE(is_urgent, 0) as is_urgent,
+                        COALESCE(created_by, 'Admin') as author,
+                        DATE_FORMAT(created_at, '%Y-%m-%d') as date
                       FROM announcements 
                       WHERE $where
                       ORDER BY is_urgent DESC, created_at DESC";
@@ -152,57 +165,6 @@ try {
             }
 
             sendResponse(true, $announcements);
-        }
-
-        // Events
-        else if ($action === 'events') {
-            // Get member demographic
-            $demographic = 'general';
-            try {
-                $stmt = $pdo->prepare("SELECT dob, gender FROM Members WHERE mid = ?");
-                $stmt->execute([$member_id]);
-                $member = $stmt->fetch(PDO::FETCH_ASSOC);
-
-                if ($member && $member['dob']) {
-                    $dob = new DateTime($member['dob']);
-                    $now = new DateTime();
-                    $age = $now->diff($dob)->y;
-                    $gender = $member['gender'];
-
-                    if ($age < 18) $demographic = 'children';
-                    elseif ($age <= 35) $demographic = 'youth';
-                    elseif ($gender === 'M' || $gender === 'male') $demographic = 'men';
-                    elseif ($gender === 'F' || $gender === 'female') $demographic = 'women';
-                }
-            } catch (Exception $e) {
-                // Use default
-            }
-
-            $query = "SELECT id, title, event_date, event_time, location, target_demographic,
-                             (SELECT COUNT(*) FROM event_rsvp WHERE event_id = events.id AND status = 'attending') as attendees,
-                             (SELECT COUNT(*) FROM event_rsvp WHERE event_id = events.id AND member_id = ? AND status = 'attending') as isAttending
-                      FROM events
-                      WHERE event_date >= CURDATE() AND (target_demographic = 'all' OR target_demographic = ?)
-                      ORDER BY event_date ASC";
-
-            $stmt = $pdo->prepare($query);
-            $stmt->execute([$member_id, $demographic]);
-
-            $events = [];
-            while ($row = $stmt->fetch(PDO::FETCH_ASSOC)) {
-                $events[] = [
-                    'id' => $row['id'],
-                    'title' => $row['title'],
-                    'date' => $row['event_date'],
-                    'time' => date('g:i A', strtotime($row['event_time'])),
-                    'location' => $row['location'],
-                    'attendees' => (int)$row['attendees'],
-                    'isAttending' => (bool)$row['isAttending'],
-                    'demographic' => $row['target_demographic']
-                ];
-            }
-
-            sendResponse(true, $events);
         } else {
             sendResponse(false, null, 'Invalid action');
         }
@@ -211,37 +173,7 @@ try {
     // POST REQUESTS
     else if ($method === 'POST') {
         $data = json_decode(file_get_contents("php://input"), true);
-
-        // RSVP Event
-        if ($action === 'rsvp-event') {
-            $member_id = $data['member_id'] ?? null;
-            $event_id = $data['event_id'] ?? null;
-            $attending = $data['attending'] ?? false;
-
-            if (!$member_id || !$event_id) {
-                sendResponse(false, null, 'Member ID and Event ID required');
-            }
-
-            $status = $attending ? 'attending' : 'not_attending';
-
-            // Check if exists
-            $check = $pdo->prepare("SELECT id FROM event_rsvp WHERE event_id = ? AND member_id = ?");
-            $check->execute([$event_id, $member_id]);
-
-            if ($check->fetch()) {
-                // Update
-                $stmt = $pdo->prepare("UPDATE event_rsvp SET status = ?, updated_at = NOW() WHERE event_id = ? AND member_id = ?");
-                $stmt->execute([$status, $event_id, $member_id]);
-            } else {
-                // Insert
-                $stmt = $pdo->prepare("INSERT INTO event_rsvp (event_id, member_id, status) VALUES (?, ?, ?)");
-                $stmt->execute([$event_id, $member_id, $status]);
-            }
-
-            sendResponse(true, null, 'RSVP updated successfully');
-        } else {
-            sendResponse(false, null, 'Invalid action');
-        }
+        sendResponse(false, null, 'Invalid action');
     } else {
         sendResponse(false, null, 'Method not allowed');
     }

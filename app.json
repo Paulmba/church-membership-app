@@ -24,7 +24,8 @@
         "color": "#ffffff"
       },
       "edgeToEdgeEnabled": true,
-      "package": "com.anonymous.myapp"
+      "package": "com.anonymous.myapp",
+      "usesCleartextTraffic": true
     },
     "web": {
       "bundler": "metro",
@@ -43,7 +44,8 @@
         }
       ],
       "expo-font",
-      "expo-web-browser"
+      "expo-web-browser",
+      "expo-image-picker"
     ],
     "experiments": {
       "typedRoutes": true

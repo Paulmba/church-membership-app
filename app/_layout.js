@@ -10,7 +10,12 @@ const RootLayout = () => {
   return (
     <Stack>
       {userToken ? (
-        <Stack.Screen name="member-area" options={{ headerShown: false }} />
+        <Stack.Group>
+          <Stack.Screen name="member-area" options={{ headerShown: false }} />
+          <Stack.Screen name="profile" options={{ headerShown: true, title: 'My Profile' }} />
+          <Stack.Screen name="announcements" options={{ headerShown: true, title: 'Announcements' }} />
+          <Stack.Screen name="edit-profile" options={{ headerShown: false }} />
+        </Stack.Group>
       ) : (
         <Stack.Screen name="index" options={{ headerShown: false }} />
       )}

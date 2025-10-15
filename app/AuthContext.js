@@ -3,9 +3,12 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import React, { createContext, useEffect, useState } from 'react';
 
+import { useRouter } from 'expo-router';
+
 export const AuthContext = createContext();
 
 export const AuthProvider = ({ children }) => {
+    const router = useRouter();
 	const [userToken, setUserToken] = useState(null);
 	const [memberId, setMemberId] = useState(null);
 	const [authLoading, setAuthLoading] = useState(true);
@@ -59,6 +62,9 @@ export const AuthProvider = ({ children }) => {
 			// Clear state
 			setUserToken(null);
 			setMemberId(null);
+
+            // Redirect to login
+            router.replace('/');
 
 			return true;
 		} catch (error) {
