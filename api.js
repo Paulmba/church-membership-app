@@ -10,9 +10,6 @@ import API_BASE_URL from './config';
 const api = axios.create({
 	baseURL: API_BASE_URL,
 	timeout: 10000,
-	headers: {
-		'Content-Type': 'application/json',
-	},
 });
 
 // Token management utilities
@@ -163,7 +160,10 @@ const apiService = {
 
 	// Generic authenticated requests
 	get: (endpoint, params = {}) => api.get(endpoint, { params }),
-	post: (endpoint, data) => api.post(endpoint, data),
+	post: (endpoint, data, config) => {
+		console.log('apiService.post config:', config);
+		return api.post(endpoint, data, config);
+	},
 	put: (endpoint, data) => api.put(endpoint, data),
 	delete: (endpoint) => api.delete(endpoint),
 };

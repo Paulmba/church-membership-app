@@ -227,7 +227,7 @@ export class AuthenticatedApiService {
  * React hook for automatic token management
  */
 import { useContext, useEffect, useState } from 'react';
-import { AuthContext } from '../app/AuthContext';
+import { AuthContext } from '../context/AuthContext';
 
 export const useTokenManager = () => {
 	const { userToken, logout } = useContext(AuthContext);

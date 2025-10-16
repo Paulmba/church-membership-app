@@ -15,8 +15,8 @@ import {
 import Animated, { FadeInUp } from 'react-native-reanimated';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 import apiService from '../api';
+import { AuthContext } from '../context/AuthContext';
 import styles from '../styles/styles';
-import { AuthContext } from './AuthContext';
 
 export default function MemberAreaScreen() {
 	const router = useRouter();
@@ -26,26 +26,25 @@ export default function MemberAreaScreen() {
 	const [activeTab, setActiveTab] = useState('general');
 	const [member, setMember] = useState(null);
 	const [announcements, setAnnouncements] = useState([]);
-	
 	const [loading, setLoading] = useState(true);
 	const [tabLoading, setTabLoading] = useState(false);
+	const [isLoggingOut, setIsLoggingOut] = useState(false);
 
+	// Load member data when memberId changes
 	useEffect(() => {
 		if (memberId) {
 			loadMemberData();
-		} else {
-			Alert.alert('Error', 'Member ID not found. Please login again.');
-			logout && logout();
+		} else if (!isLoggingOut) {
+			Alert.alert('Error', 'Member ID not found. Please login again.', [
+				{ text: 'OK', onPress: () => router.replace('/') },
+			]);
 		}
-	}, [memberId]);
+	}, [memberId, isLoggingOut]);
 
 	const loadMemberData = async () => {
 		try {
 			setLoading(true);
-			await Promise.all([
-				loadMemberProfile(),
-				loadAnnouncements(activeTab),
-			]);
+			await Promise.all([loadMemberProfile(), loadAnnouncements(activeTab)]);
 		} catch (error) {
 			console.error('Error loading member data:', error);
 			Alert.alert('Error', 'Failed to load member data. Please try again.');
@@ -57,7 +56,6 @@ export default function MemberAreaScreen() {
 	const loadMemberProfile = async () => {
 		try {
 			const response = await apiService.member.getProfile(memberId);
-
 			if (response.data.success) {
 				setMember(response.data.data);
 			} else {
@@ -73,7 +71,6 @@ export default function MemberAreaScreen() {
 		try {
 			setTabLoading(true);
 			const response = await apiService.member.getAnnouncements(memberId, tab);
-
 			if (response.data.success) {
 				setAnnouncements(response.data.data || []);
 			} else {
@@ -88,17 +85,23 @@ export default function MemberAreaScreen() {
 		}
 	};
 
-
 	const handleRefresh = async () => {
 		setRefreshing(true);
 		await loadMemberData();
 		setRefreshing(false);
 	};
 
-	const handleLogout = () => {
+	const handleLogout = async () => {
 		Alert.alert('Logout', 'Are you sure you want to logout?', [
 			{ text: 'Cancel', style: 'cancel' },
-			{ text: 'Logout', onPress: () => logout && logout() },
+			{
+				text: 'Logout',
+				onPress: async () => {
+					setIsLoggingOut(true);
+					await logout();
+					router.replace('/');
+				},
+			},
 		]);
 	};
 
@@ -108,20 +111,19 @@ export default function MemberAreaScreen() {
 		await loadAnnouncements(newTab);
 	};
 
-
 	const getAnnouncementColor = (type) => {
 		switch (type) {
 			case 'general':
-				return '#3498db';
+				return '#007bff';
 			case 'youth':
 			case 'men':
 			case 'women':
 			case 'children':
-				return '#27ae60';
+				return '#28a745';
 			case 'leadership':
-				return '#f39c12';
+				return '#ffc107';
 			default:
-				return '#95a5a6';
+				return '#6c757d';
 		}
 	};
 
@@ -131,14 +133,14 @@ export default function MemberAreaScreen() {
 			style={styles.memberHeader}>
 			<View style={styles.profileSection}>
 				<View style={styles.profileImageContainer}>
-					{member?.profileImage ? (
+					{member?.profile_photo_url ? (
 						<Image
-							source={{ uri: member.profileImage }}
+							source={{ uri: member.profile_photo_url }}
 							style={styles.profileImage}
 						/>
 					) : (
 						<View style={styles.defaultProfileImage}>
-							<Icon name='account' size={40} color='#fff' />
+							<Icon name='account-outline' size={40} color='#fff' />
 						</View>
 					)}
 					{member?.notifications > 0 && (
@@ -148,7 +150,9 @@ export default function MemberAreaScreen() {
 					)}
 				</View>
 				<View style={styles.profileInfo}>
-					<Text style={styles.memberName}>Welcome, {member?.name}</Text>
+					<Text style={styles.memberName}>
+						Welcome, {member?.first_name} {member?.last_name}
+					</Text>
 					<Text style={styles.memberRole}>Member</Text>
 					<View style={styles.tagContainer}>
 						<Text
@@ -170,18 +174,17 @@ export default function MemberAreaScreen() {
 			style={styles.quickActionsSection}>
 			<Text style={styles.sectionTitle}>Quick Actions</Text>
 			<View style={styles.actionGrid}>
-
 				<TouchableOpacity
-					style={[styles.actionCard, { backgroundColor: '#3498db' }]}
+					style={styles.actionCard}
 					onPress={() => router.push('/profile')}>
-					<Icon name='account-circle' size={24} color='#fff' />
+					<Icon name='account-circle-outline' size={24} color='#fff' />
 					<Text style={styles.actionText}>My Profile</Text>
 				</TouchableOpacity>
 
-                <TouchableOpacity
-					style={[styles.actionCard, { backgroundColor: '#f39c12' }]}
+				<TouchableOpacity
+					style={styles.actionCard}
 					onPress={() => router.push('/announcements')}>
-					<Icon name='bullhorn' size={24} color='#fff' />
+					<Icon name='bullhorn-outline' size={24} color='#fff' />
 					<Text style={styles.actionText}>Announcements</Text>
 				</TouchableOpacity>
 			</View>
@@ -196,7 +199,7 @@ export default function MemberAreaScreen() {
 				<Icon
 					name='bullhorn-outline'
 					size={16}
-					color={activeTab === 'general' ? '#fff' : '#666'}
+					color={activeTab === 'general' ? '#fff' : '#495057'}
 				/>
 				<Text
 					style={[
@@ -211,9 +214,9 @@ export default function MemberAreaScreen() {
 				style={[styles.tab, activeTab === 'group' && styles.activeTab]}
 				onPress={() => handleTabChange('group')}>
 				<Icon
-					name='account-multiple'
+					name='account-multiple-outline'
 					size={16}
-					color={activeTab === 'group' ? '#fff' : '#666'}
+					color={activeTab === 'group' ? '#fff' : '#495057'}
 				/>
 				<Text
 					style={[
@@ -230,12 +233,14 @@ export default function MemberAreaScreen() {
 		<Animated.View
 			entering={FadeInUp.duration(800)}
 			style={styles.announcementsSection}>
-			<Text style={styles.sectionTitle}>📌 Announcements</Text>
+			<Text style={styles.sectionTitle}>
+				<Icon name='bullhorn-outline' size={20} color='#495057' /> Announcements
+			</Text>
 			{renderAnnouncementTabs()}
 
 			{tabLoading ? (
 				<View style={styles.tabLoadingContainer}>
-					<Icon name='loading' size={30} color='#666' />
+					<Icon name='loading' size={30} color='#007bff' />
 				</View>
 			) : announcements.length === 0 ? (
 				<Text style={styles.emptyText}>No announcements yet.</Text>
@@ -246,14 +251,14 @@ export default function MemberAreaScreen() {
 							<View
 								style={[
 									styles.typeIndicator,
-									{
-										backgroundColor: getAnnouncementColor(announcement.type),
-									},
+									{ backgroundColor: getAnnouncementColor(announcement.type) },
 								]}
 							/>
 							<View style={styles.announcementMeta}>
 								<Text style={styles.announcementTitle}>
-									{announcement.isUrgent && '🔴 '}
+									{announcement.isUrgent && (
+										<Icon name='alert-circle' size={16} color='#d9534f' />
+									)}
 									{announcement.title}
 								</Text>
 								<Text style={styles.announcementAuthor}>
@@ -270,19 +275,24 @@ export default function MemberAreaScreen() {
 		</Animated.View>
 	);
 
-
 	const renderDemographicCorner = () => (
 		<Animated.View
 			entering={FadeInUp.duration(1000)}
 			style={styles.demographicSection}>
 			<Text style={styles.sectionTitle}>
-				{member?.demographic === 'youth'
-					? '🎯'
-					: member?.demographic === 'men'
-					? '👨'
-					: member?.demographic === 'women'
-					? '👩'
-					: '👶'}{' '}
+				<Icon
+					name={
+						member?.demographic === 'youth'
+							? 'bullseye-arrow'
+							: member?.demographic === 'men'
+							? 'face-man'
+							: member?.demographic === 'women'
+							? 'face-woman'
+							: 'baby-face-outline'
+					}
+					size={20}
+					color='#495057'
+				/>{' '}
 				{member?.demographic?.toUpperCase() ?? ''} Corner
 			</Text>
 			<View style={styles.resourceCard}>
@@ -301,7 +311,7 @@ export default function MemberAreaScreen() {
 				source={require('../assets/bg.jpg')}
 				style={styles.background}>
 				<View style={styles.loadingContainer}>
-					<Icon name='loading' size={50} color='#fff' />
+					<Icon name='loading' size={50} color='#007bff' />
 					<Text style={styles.loadingText}>Loading your dashboard...</Text>
 				</View>
 			</ImageBackground>
@@ -314,7 +324,7 @@ export default function MemberAreaScreen() {
 				source={require('../assets/bg.jpg')}
 				style={styles.background}>
 				<View style={styles.loadingContainer}>
-					<Icon name='alert-circle' size={50} color='#e63946' />
+					<Icon name='alert-circle' size={50} color='#d9534f' />
 					<Text style={styles.loadingText}>Failed to load member data</Text>
 					<TouchableOpacity style={styles.retryButton} onPress={loadMemberData}>
 						<Text style={styles.retryButtonText}>Retry</Text>
@@ -337,7 +347,6 @@ export default function MemberAreaScreen() {
 					{renderHeader()}
 					{renderQuickActions()}
 					{renderAnnouncements()}
-					
 					{renderDemographicCorner()}
 
 					<Animated.View
@@ -346,7 +355,7 @@ export default function MemberAreaScreen() {
 						<TouchableOpacity
 							style={styles.logoutButton}
 							onPress={handleLogout}>
-							<Icon name='logout-variant' size={20} color='#e63946' />
+							<Icon name='logout-variant' size={20} color='#d9534f' />
 							<Text style={styles.logoutText}>Logout</Text>
 						</TouchableOpacity>
 					</Animated.View>

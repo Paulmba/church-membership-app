@@ -43,3 +43,33 @@ FILES data: Array
 (
 )
 
+Upload request received at 2025-10-15 14:12:51
+POST data: Array
+(
+)
+
+FILES data: Array
+(
+)
+
+Upload request received at 2025-10-15 15:15:52
+POST data: Array
+(
+    [mid] => 36
+)
+
+Request body: 
+Upload request received at 2025-10-15 15:44:20
+POST data: Array
+(
+    [mid] => 36
+)
+
+Request body: 
+Upload request received at 2025-10-16 06:56:04
+POST data: Array
+(
+    [mid] => 358
+)
+
+Request body: 

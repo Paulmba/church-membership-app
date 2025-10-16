@@ -1,7 +1,7 @@
 // hooks/useRoleAccess.js - Issue 10: Role-based UI rendering hook
 
 import { useContext, useMemo } from 'react';
-import { AuthContext } from '../app/AuthContext';
+import { AuthContext } from '../context/AuthContext';
 
 /**
  * Custom hook for role-based access control and conditional UI rendering

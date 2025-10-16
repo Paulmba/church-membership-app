@@ -7,6 +7,7 @@ import {
 	KeyboardAvoidingView,
 	Platform,
 	ScrollView,
+	Text,
 	TextInput,
 	View,
 } from 'react-native';
@@ -14,7 +15,7 @@ import Animated, { FadeInUp } from 'react-native-reanimated';
 import Icon from 'react-native-vector-icons/MaterialIcons';
 
 import api from '../api';
-import PushNotificationService from '../services/pushNotificationService';
+import pushNotificationService from '../services/pushNotificationService';
 import styles from '../styles/styles';
 
 export default function CreateAccountScreen() {
@@ -26,19 +27,17 @@ export default function CreateAccountScreen() {
 	const router = useRouter();
 
 	useEffect(() => {
-		// Initialize push notifications when component mounts
 		initializePushNotifications();
 	}, []);
 
 	const initializePushNotifications = async () => {
 		try {
-			const token = await PushNotificationService.initialize();
+			const token = await pushNotificationService.initialize();
 			if (token) {
 				setPushToken(token);
 				console.log('Push token obtained:', token);
 			} else {
 				console.log('Failed to get push token');
-				// You might want to show a warning to the user
 				Alert.alert(
 					'Notification Permission',
 					'Push notifications are disabled. You may not receive OTP notifications.',
@@ -68,56 +67,32 @@ export default function CreateAccountScreen() {
 
 		setLoading(true);
 		try {
-			const requestData = {
-				phone_number: phone,
-				password,
-			};
+			const requestData = { phone_number: phone, password };
 
-			// Include push token if available
-			if (pushToken) {
-				requestData.push_token = pushToken;
-			}
+			if (pushToken) requestData.push_token = pushToken;
 
-			const res = await api.post('/create_account.php', requestData);
+			const res = await api.auth.createAccount(requestData);
 
 			if (res.data.success) {
-				if (res.data.notification_sent) {
-					Alert.alert(
-						'Account Created',
-						'Account created successfully! Check your notifications for the OTP.',
-						[
-							{
-								text: 'OK',
-								onPress: () =>
-									router.push({
-										pathname: '/otp-verification',
-										params: {
-											phone_number: phone,
-											has_push_notifications: 'true',
-										},
-									}),
-							},
-						]
-					);
-				} else {
-					Alert.alert(
-						'Account Created',
-						'Account created successfully! You will need to enter the OTP manually.',
-						[
-							{
-								text: 'OK',
-								onPress: () =>
-									router.push({
-										pathname: '/otp-verification',
-										params: {
-											phone_number: phone,
-											has_push_notifications: 'false',
-										},
-									}),
-							},
-						]
-					);
-				}
+				const message = res.data.notification_sent
+					? 'Account created successfully! Check your notifications for the OTP.'
+					: 'Account created successfully! You will need to enter the OTP manually.';
+
+				Alert.alert('Account Created', message, [
+					{
+						text: 'OK',
+						onPress: () =>
+							router.push({
+								pathname: '/otp-verification',
+								params: {
+									phone_number: phone,
+									has_push_notifications: res.data.notification_sent
+										? 'true'
+										: 'false',
+								},
+							}),
+					},
+				]);
 			} else {
 				Alert.alert('Error', res.data.message || 'Account creation failed');
 			}

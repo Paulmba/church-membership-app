@@ -1,4 +1,5 @@
 import { Ionicons } from '@expo/vector-icons';
+import * as FileSystem from 'expo-file-system';
 import * as ImagePicker from 'expo-image-picker';
 import { useNavigation } from 'expo-router';
 import React, { useContext, useEffect, useState } from 'react';
@@ -13,7 +14,7 @@ import {
 	View,
 } from 'react-native';
 import apiService from '../api';
-import { AuthContext } from './AuthContext'; // Correct path
+import { AuthContext } from '../context/AuthContext';
 
 const MyProfileScreen = () => {
 	const { memberId, userToken } = useContext(AuthContext);
@@ -33,7 +34,7 @@ const MyProfileScreen = () => {
 			const response = await apiService.get(
 				`/get_member_profile.php?mid=${memberId}`
 			);
-			console.log('Profile data response:', response.data); // Added for debugging
+			console.log('Profile data response:', response.data);
 
 			if (response.data.success) {
 				setMemberData(response.data.data);
@@ -44,88 +45,127 @@ const MyProfileScreen = () => {
 				);
 			}
 		} catch (error) {
-			console.error('Error fetching profile data:', error); // Added for debugging
+			console.error('Error fetching profile data:', error);
 			Alert.alert('Error', 'An error occurred while fetching your profile.');
 		} finally {
 			setLoading(false);
 		}
 	};
 
-        const handleChoosePhoto = async () => {
-            console.log('handleChoosePhoto called');
-            const permissionResult = await ImagePicker.requestMediaLibraryPermissionsAsync();
-            console.log('Permission result:', permissionResult);
-    
-            if (permissionResult.granted === false) {
-                Alert.alert("Permission Denied", "You've refused to allow this app to access your photos!");
-                return;
-            }
-    
-            const pickerResult = await ImagePicker.launchImageLibraryAsync({
-                mediaTypes: 'Images',
-                allowsEditing: true,
-                aspect: [1, 1],
-                quality: 1,
-            });
-            console.log('Picker result:', pickerResult);
-    
-            if (pickerResult.cancelled) {
-                console.log('Image picking cancelled');
-                return;
-            }
-    
-            uploadImage(pickerResult.assets[0].uri);
-        };
-    
-        const uploadImage = async (uri) => {
-            console.log('Uploading image for memberId:', memberId);
-    
-            if (!memberId) {
-                Alert.alert('Error', 'Member ID missing. Please log in again.');
-                return;
-            }
-    
-            setUploading(true);
-    
-            try {
-                const filename = uri.split('/').pop();
-                const match = /\.(\w+)$/.exec(filename);
-                const type = match ? `image/${match[1]}` : `image`;
-    
-                const formData = new FormData();
-                formData.append('mid', String(memberId));
-                formData.append('profile_photo', {
-                    uri,
-                    name: filename,
-                    type,
-                });
-    
-                const response = await apiService.post(
-                    '/upload_profile_photo.php',
-                    formData
-                );
-    
-                console.log('Upload response:', response.data);
-    
-                if (response.data.success) {
-                    setMemberData({
-                        ...memberData,
-                        profile_photo_url: response.data.data.profile_photo_url,
-                    });
-                    Alert.alert('Success', 'Profile photo updated successfully.');
-                } else {
-                    Alert.alert(
-                        'Error',
-                        response.data.message || 'Failed to upload photo.'
-                    );
-                }
-            } catch (error) {
-                console.error('Upload error:', error.response?.data || error.message);
-                Alert.alert('Error', 'An error occurred while uploading the photo.');
-            } finally {
-                setUploading(false);
-            }
-        };
+	const handleChoosePhoto = async () => {
+		console.log('handleChoosePhoto called');
+
+		// Request permissions
+		const permissionResult =
+			await ImagePicker.requestMediaLibraryPermissionsAsync();
+		console.log('Permission result:', permissionResult);
+
+		if (permissionResult.granted === false) {
+			Alert.alert(
+				'Permission Denied',
+				"You've refused to allow this app to access your photos!"
+			);
+			return;
+		}
+
+		// Launch image picker
+		const pickerResult = await ImagePicker.launchImageLibraryAsync({
+			mediaTypes: ImagePicker.MediaTypeOptions.Images, // Fixed: Use proper enum
+			allowsEditing: true,
+			aspect: [1, 1],
+			quality: 0.8, // Reduced quality to decrease file size
+		});
+
+		console.log('Picker result:', pickerResult);
+
+		// Fixed: Changed 'cancelled' to 'canceled'
+		if (pickerResult.canceled) {
+			console.log('Image picking cancelled');
+			return;
+		}
+
+		// Upload the selected image
+		uploadImage(pickerResult.assets[0].uri);
+	};
+
+	const uploadImage = async (uri) => {
+		console.log('Uploading image for memberId:', memberId);
+		console.log('Image URI:', uri);
+
+		if (!memberId) {
+			Alert.alert('Error', 'Member ID missing. Please log in again.');
+			return;
+		}
+
+		setUploading(true);
+
+		try {
+			// Extract filename and determine mime type
+			const filename = uri.split('/').pop();
+			const match = /\.(\w+)$/.exec(filename);
+			const type = match ? `image/${match[1]}` : `image/jpeg`;
+
+			console.log('Filename:', filename);
+			console.log('MIME type:', type);
+
+			// Create FormData
+			const formData = new FormData();
+			formData.append('mid', String(memberId));
+			formData.append('profile_photo', {
+				uri,
+				name: filename,
+				type,
+			});
+
+			console.log('FormData created, sending request...');
+
+			// Upload with proper headers for multipart/form-data
+			const response = await apiService.post(
+				'/upload_profile_photo.php',
+				formData,
+				{
+					headers: {
+						'Content-Type': 'multipart/form-data',
+						// Authorization header should be added by apiService interceptor
+					},
+					// Add timeout for large files
+					timeout: 30000,
+				}
+			);
+
+			console.log('Upload response:', response.data);
+
+			if (response.data.success) {
+				// Update local state with new photo URL
+				setMemberData({
+					...memberData,
+					profile_photo_url: response.data.data.profile_photo_url,
+				});
+				Alert.alert('Success', 'Profile photo updated successfully.');
+			} else {
+				Alert.alert(
+					'Error',
+					response.data.message || 'Failed to upload photo.'
+				);
+			}
+		} catch (error) {
+			console.error('Upload error:', error);
+			console.error('Error response:', error.response?.data);
+			console.error('Error message:', error.message);
+
+			let errorMessage = 'An error occurred while uploading the photo.';
+			if (error.response?.data?.message) {
+				errorMessage = error.response.data.message;
+			} else if (error.message) {
+				errorMessage = error.message;
+			}
+
+			Alert.alert('Error', errorMessage);
+		} finally {
+			setUploading(false);
+		}
+	};
+
 	const handleEditProfile = () => {
 		navigation.navigate('edit-profile');
 	};

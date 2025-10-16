@@ -1,10 +1,10 @@
 <?php
-// api/upload_profile_photo.php
+// api/upload_profile_photo.php - MySQLi version
 
 // Log requests for debugging
 file_put_contents('upload-log.txt', "Upload request received at " . date('Y-m-d H:i:s') . "\n", FILE_APPEND);
 file_put_contents('upload-log.txt', "POST data: " . print_r($_POST, true) . "\n", FILE_APPEND);
-file_put_contents('upload-log.txt', "FILES data: " . print_r($_FILES, true) . "\n", FILE_APPEND);
+file_put_contents('upload-log.txt', "Request body: " . file_get_contents('php://input') . "\n", FILE_APPEND);
 
 header('Content-Type: application/json');
 
@@ -31,36 +31,38 @@ if ($memberId <= 0) {
 if (isset($_FILES['profile_photo'])) {
     $file = $_FILES['profile_photo'];
 
-    // File properties
     $fileName = $file['name'];
     $fileTmpName = $file['tmp_name'];
     $fileSize = $file['size'];
     $fileError = $file['error'];
 
-    // File extension
     $fileExt = explode('.', $fileName);
     $fileActualExt = strtolower(end($fileExt));
 
-    // Allowed extensions
     $allowed = ['jpg', 'jpeg', 'png'];
 
     if (in_array($fileActualExt, $allowed)) {
         if ($fileError === 0) {
-            if ($fileSize < 5000000) { // 5MB limit
+            if ($fileSize < 5000000) {
                 $fileNameNew = "profile_" . $memberId . "_" . uniqid('', true) . "." . $fileActualExt;
                 $fileDestination = __DIR__ . '/uploads/profile_photos/' . $fileNameNew;
 
                 if (move_uploaded_file($fileTmpName, $fileDestination)) {
-                    $fileUrl = 'http://' . $_SERVER['HTTP_HOST'] . '/api/uploads/profile_photos/' . $fileNameNew;
+                    $fileUrl = 'http://' . $_SERVER['HTTP_HOST'] . '/get_profile_photo.php?file=' . $fileNameNew;
 
-                    try {
-                        $stmt = $pdo->prepare("UPDATE members SET profile_photo_url = ? WHERE mid = ?");
-                        $stmt->execute([$fileUrl, $memberId]);
+                    // MySQLi update
+                    $stmt = $conn->prepare("UPDATE Members SET profile_photo_url = ? WHERE mid = ?");
+                    $stmt->bind_param("si", $fileUrl, $memberId);
 
-                        echo json_encode(['success' => true, 'message' => 'Profile photo updated successfully', 'data' => ['profile_photo_url' => $fileUrl]]);
-                    } catch (PDOException $e) {
+                    if ($stmt->execute()) {
+                        echo json_encode([
+                            'success' => true,
+                            'message' => 'Profile photo updated successfully',
+                            'data' => ['profile_photo_url' => $fileUrl]
+                        ]);
+                    } else {
                         http_response_code(500);
-                        echo json_encode(['success' => false, 'message' => 'Database error', 'error' => $e->getMessage()]);
+                        echo json_encode(['success' => false, 'message' => 'Database error', 'error' => $stmt->error]);
                     }
                 } else {
                     http_response_code(500);

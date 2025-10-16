@@ -1,5 +1,5 @@
 <?php
-// api/update_member_profile.php
+// api/update_member_profile.php - MySQLi version
 header('Content-Type: application/json');
 
 require_once __DIR__ . '/config/db.php';
@@ -29,12 +29,20 @@ $firstName = isset($data['first_name']) ? trim($data['first_name']) : '';
 $lastName = isset($data['last_name']) ? trim($data['last_name']) : '';
 $address = isset($data['address']) ? trim($data['address']) : '';
 
-try {
-    $stmt = $pdo->prepare("UPDATE members SET first_name = ?, last_name = ?, address = ? WHERE mid = ?");
-    $stmt->execute([$firstName, $lastName, $address, $memberId]);
-
-    echo json_encode(['success' => true, 'message' => 'Profile updated successfully']);
-} catch (PDOException $e) {
+$stmt = $conn->prepare("UPDATE Members SET first_name = ?, last_name = ?, address = ? WHERE mid = ?");
+if (!$stmt) {
     http_response_code(500);
-    echo json_encode(['success' => false, 'message' => 'Database error', 'error' => $e->getMessage()]);
+    echo json_encode(['success' => false, 'message' => 'Database prepare error', 'error' => $conn->error]);
+    exit;
 }
+
+$stmt->bind_param("sssi", $firstName, $lastName, $address, $memberId);
+
+if ($stmt->execute()) {
+    echo json_encode(['success' => true, 'message' => 'Profile updated successfully']);
+} else {
+    http_response_code(500);
+    echo json_encode(['success' => false, 'message' => 'Database error', 'error' => $stmt->error]);
+}
+
+$stmt->close();

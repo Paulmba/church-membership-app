@@ -1,5 +1,5 @@
 <?php
-// member-dashboard-minimal.php - Absolute minimal version that should work
+// member-dashboard.php - MySQLi version of minimal member dashboard
 
 // Log requests for debugging
 file_put_contents('member-dashboard-log.txt', "Request received at " . date('Y-m-d H:i:s') . "\n", FILE_APPEND);
@@ -41,43 +41,37 @@ if ($method === 'GET' && !$member_id) {
 }
 
 try {
-    // GET REQUESTS
     if ($method === 'GET') {
-
         // Member Profile
         if ($action === 'member-profile') {
-            $stmt = $pdo->prepare("SELECT mid, first_name, last_name FROM Members WHERE mid = ?");
-            $stmt->execute([$member_id]);
-            $member = $stmt->fetch(PDO::FETCH_ASSOC);
+            $stmt = $conn->prepare("SELECT mid, first_name, last_name, profile_photo_url, dob, gender FROM Members WHERE mid = ?");
+            $stmt->bind_param("i", $member_id);
+            $stmt->execute();
+            $result = $stmt->get_result();
+            $member = $result->fetch_assoc();
 
             if (!$member) {
                 sendResponse(false, null, 'Member not found');
             }
 
-            // Calculate age and demographic if dob exists
+            // Calculate age and demographic
             $age = 25; // default
             $gender = 'M'; // default
             $demographic = 'youth';
 
-            // Try to get dob and gender
-            $detailStmt = $pdo->prepare("SELECT dob, gender FROM Members WHERE mid = ?");
-            $detailStmt->execute([$member_id]);
-            $details = $detailStmt->fetch(PDO::FETCH_ASSOC);
-
-            if ($details && $details['dob']) {
-                $dob = new DateTime($details['dob']);
+            if (!empty($member['dob'])) {
+                $dob = new DateTime($member['dob']);
                 $now = new DateTime();
                 $age = $now->diff($dob)->y;
-                $gender = $details['gender'];
+                $gender = $member['gender'];
 
-                // Determine demographic
                 if ($age < 18) {
                     $demographic = 'children';
                 } elseif ($age <= 35) {
                     $demographic = 'youth';
-                } elseif ($gender === 'M' || $gender === 'male') {
+                } elseif (strtolower($gender) === 'm' || strtolower($gender) === 'male') {
                     $demographic = 'men';
-                } elseif ($gender === 'F' || $gender === 'female') {
+                } elseif (strtolower($gender) === 'f' || strtolower($gender) === 'female') {
                     $demographic = 'women';
                 } else {
                     $demographic = 'general';
@@ -86,10 +80,11 @@ try {
 
             sendResponse(true, [
                 'id' => $member['mid'],
-                'name' => $member['first_name'] . ' ' . $member['last_name'],
+                'first_name' => $member['first_name'],
+                'last_name' => $member['last_name'],
                 'role' => 'Member',
                 'demographic' => $demographic,
-                'profileImage' => null,
+                'profile_photo_url' => $member['profile_photo_url'],
                 'notifications' => 0,
                 'age' => $age,
                 'gender' => $gender
@@ -102,38 +97,36 @@ try {
 
             // Get member demographic
             $demographic = 'general';
-            try {
-                $stmt = $pdo->prepare("SELECT dob, gender FROM Members WHERE phone_number = ?");
-                $stmt->execute([$member_id]);
-                $member = $stmt->fetch(PDO::FETCH_ASSOC);
+            $stmt = $conn->prepare("SELECT dob, gender FROM Members WHERE mid = ?");
+            $stmt->bind_param("i", $member_id);
+            $stmt->execute();
+            $result = $stmt->get_result();
+            $member = $result->fetch_assoc();
 
-                if ($member && $member['dob']) {
-                    $dob = new DateTime($member['dob']);
-                    $now = new DateTime();
-                    $age = $now->diff($dob)->y;
-                    $gender = strtolower($member['gender']);
+            if ($member && !empty($member['dob'])) {
+                $dob = new DateTime($member['dob']);
+                $now = new DateTime();
+                $age = $now->diff($dob)->y;
+                $gender = strtolower($member['gender']);
 
-                    if ($age < 18) $demographic = 'children';
-                    elseif ($age <= 35) $demographic = 'youth';
-                    elseif ($gender === 'm' || $gender === 'male') $demographic = 'men';
-                    elseif ($gender === 'f' || $gender === 'female') $demographic = 'women';
-                }
-            } catch (Exception $e) {
-                // Use default demographic
+                if ($age < 18) $demographic = 'children';
+                elseif ($age <= 35) $demographic = 'youth';
+                elseif ($gender === 'm' || $gender === 'male') $demographic = 'men';
+                elseif ($gender === 'f' || $gender === 'female') $demographic = 'women';
             }
 
-            // Build query based on tab
+            // Build query
             $where = "expiry_date > NOW()";
             $params = [];
+            $types = "";
 
             if ($type === 'general') {
-                // Show only general announcements
                 $where .= " AND (type = 'general' OR type IS NULL OR target_demographic = 'all')";
             } elseif ($type === 'group') {
-                // Show announcements for member's demographic group
                 $where .= " AND (target_demographic = ? OR type = ?)";
                 $params[] = $demographic;
                 $params[] = $demographic;
+                $types = "ss";
             }
 
             $query = "SELECT 
@@ -148,11 +141,15 @@ try {
                       WHERE $where
                       ORDER BY is_urgent DESC, created_at DESC";
 
-            $stmt = $pdo->prepare($query);
-            $stmt->execute($params);
+            $stmt = $conn->prepare($query);
+            if (!empty($params)) {
+                $stmt->bind_param($types, ...$params);
+            }
+            $stmt->execute();
+            $result = $stmt->get_result();
 
             $announcements = [];
-            while ($row = $stmt->fetch(PDO::FETCH_ASSOC)) {
+            while ($row = $result->fetch_assoc()) {
                 $announcements[] = [
                     'id' => $row['id'],
                     'title' => $row['title'],
@@ -168,17 +165,9 @@ try {
         } else {
             sendResponse(false, null, 'Invalid action');
         }
-    }
-
-    // POST REQUESTS
-    else if ($method === 'POST') {
-        $data = json_decode(file_get_contents("php://input"), true);
-        sendResponse(false, null, 'Invalid action');
     } else {
         sendResponse(false, null, 'Method not allowed');
     }
-} catch (PDOException $e) {
-    sendResponse(false, null, 'Database error: ' . $e->getMessage());
 } catch (Exception $e) {
     sendResponse(false, null, 'Error: ' . $e->getMessage());
 }

@@ -17,7 +17,7 @@ import Icon from 'react-native-vector-icons/MaterialIcons';
 
 import apiService from '../api';
 import styles from '../styles/styles';
-import { AuthContext } from './AuthContext';
+import { AuthContext } from '../context/AuthContext';
 
 export default function LoginScreen() {
 	const [phone, setPhone] = useState('');

@@ -2,7 +2,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from 'expo-router';
 import React, { useContext, useState, useEffect } from 'react';
 import { ActivityIndicator, Alert, ScrollView, Text, TextInput, TouchableOpacity, View, StyleSheet } from 'react-native';
-import { AuthContext } from './AuthContext';
+import { AuthContext } from '../context/AuthContext';
 import apiService from '../api';
 
 const EditProfileScreen = () => {

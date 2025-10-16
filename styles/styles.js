@@ -6,7 +6,7 @@ const { width, height } = Dimensions.get('window');
 export default StyleSheet.create({
 	background: {
 		flex: 1,
-		backgroundColor: '#f0f2f5',
+		backgroundColor: '#e9ecef',
 	},
 	container: {
 		padding: 20,
@@ -202,9 +202,9 @@ export default StyleSheet.create({
 	},
 	memberHeader: {
 		backgroundColor: '#ffffff',
-		padding: 20,
+		padding: 25,
 		borderBottomWidth: 1,
-		borderBottomColor: '#e0e0e0',
+		borderBottomColor: '#dee2e6',
 	},
 
 	profileSection: {
@@ -221,7 +221,7 @@ export default StyleSheet.create({
 		width: 60,
 		height: 60,
 		borderRadius: 30,
-		borderWidth: 3,
+		borderWidth: 2,
 		borderColor: '#007bff',
 	},
 
@@ -238,7 +238,7 @@ export default StyleSheet.create({
 		position: 'absolute',
 		top: -5,
 		right: -5,
-		backgroundColor: '#dc3545',
+		backgroundColor: '#d9534f',
 		borderRadius: 12,
 		minWidth: 24,
 		height: 24,
@@ -259,9 +259,9 @@ export default StyleSheet.create({
 	},
 
 	memberName: {
-		fontSize: 20,
+		fontSize: 22,
 		fontWeight: 'bold',
-		color: '#1a1a1a',
+		color: '#212529',
 		marginBottom: 4,
 	},
 
@@ -278,7 +278,7 @@ export default StyleSheet.create({
 	demographicTag: {
 		paddingHorizontal: 12,
 		paddingVertical: 4,
-		borderRadius: 12,
+		borderRadius: 8,
 		fontSize: 12,
 		fontWeight: 'bold',
 		color: '#fff',
@@ -287,6 +287,7 @@ export default StyleSheet.create({
 	// Quick Actions Styles
 	quickActionsSection: {
 		padding: 20,
+        paddingVertical: 10,
 	},
 
 	actionGrid: {
@@ -296,22 +297,22 @@ export default StyleSheet.create({
 	},
 
 	actionCard: {
-		width: (width - 60) / 2,
-		backgroundColor: '#ffffff',
-		borderRadius: 12,
-		padding: 15,
+		width: (width - 50) / 2,
+		backgroundColor: '#007bff',
+		borderRadius: 8,
+		padding: 20,
 		marginBottom: 10,
 		flexDirection: 'row',
 		alignItems: 'center',
 		shadowColor: '#000',
 		shadowOffset: { width: 0, height: 1 },
-		shadowOpacity: 0.1,
-		shadowRadius: 4,
-		elevation: 2,
+		shadowOpacity: 0.05,
+		shadowRadius: 2,
+		elevation: 1,
 	},
 
 	actionText: {
-		color: '#1a1a1a',
+		color: '#fff',
 		fontWeight: 'bold',
 		marginLeft: 10,
 		fontSize: 14,
@@ -321,7 +322,7 @@ export default StyleSheet.create({
 	tabContainer: {
 		flexDirection: 'row',
 		backgroundColor: '#e9ecef',
-		borderRadius: 25,
+		borderRadius: 8,
 		padding: 4,
 		marginBottom: 15,
 	},
@@ -333,23 +334,23 @@ export default StyleSheet.create({
 		alignItems: 'center',
 		paddingVertical: 10,
 		paddingHorizontal: 15,
-		borderRadius: 20,
+		borderRadius: 6,
 	},
 
 	activeTab: {
 		backgroundColor: '#007bff',
 		shadowColor: '#007bff',
 		shadowOffset: { width: 0, height: 2 },
-		shadowOpacity: 0.3,
-		shadowRadius: 4,
-		elevation: 3,
+		shadowOpacity: 0.2,
+		shadowRadius: 3,
+		elevation: 2,
 	},
 
 	tabText: {
 		marginLeft: 6,
 		fontSize: 13,
 		fontWeight: '600',
-		color: '#6c757d',
+		color: '#495057',
 	},
 
 	activeTabText: {
@@ -372,21 +373,21 @@ export default StyleSheet.create({
 	sectionTitle: {
 		fontSize: 18,
 		fontWeight: 'bold',
-		color: '#1a1a1a',
+		color: '#212529',
 		marginBottom: 15,
 	},
 
 	// Announcement Card Styles
 	announcementCard: {
 		backgroundColor: '#ffffff',
-		borderRadius: 12,
+		borderRadius: 8,
 		padding: 15,
 		marginBottom: 12,
 		shadowColor: '#000',
 		shadowOffset: { width: 0, height: 1 },
 		shadowOpacity: 0.05,
-		shadowRadius: 3,
-		elevation: 2,
+		shadowRadius: 2,
+		elevation: 1,
 	},
 
 	announcementHeader: {
@@ -627,13 +628,13 @@ export default StyleSheet.create({
 		alignItems: 'center',
 		backgroundColor: '#fff',
 		padding: 15,
-		borderRadius: 12,
+		borderRadius: 8,
 		borderWidth: 1,
-		borderColor: '#dc3545',
+		borderColor: '#d9534f',
 	},
 
 	logoutText: {
-		color: '#dc3545',
+		color: '#d9534f',
 		fontSize: 16,
 		fontWeight: '600',
 		marginLeft: 8,
@@ -643,11 +644,11 @@ export default StyleSheet.create({
 		flex: 1,
 		justifyContent: 'center',
 		alignItems: 'center',
-		backgroundColor: '#f0f2f5',
+		backgroundColor: '#f8f9fa',
 	},
 
 	loadingText: {
-		color: '#1a1a1a',
+		color: '#212529',
 		fontSize: 16,
 		marginTop: 15,
 	},
@@ -660,7 +661,7 @@ export default StyleSheet.create({
 		fontSize: 14,
 		color: '#6c757d',
 		textAlign: 'center',
-		marginTop: 10,
+		marginTop: 20,
 		marginBottom: 20,
 		fontStyle: 'italic',
 	},

@@ -23,7 +23,6 @@ class PushNotificationService {
 	// Initialize push notifications
 	async initialize() {
 		try {
-			// Check if device supports push notifications
 			if (!Device.isDevice) {
 				console.log('Must use physical device for Push Notifications');
 				return null;
@@ -73,7 +72,6 @@ class PushNotificationService {
 
 	// Set up notification listeners
 	setupNotificationListeners(onOTPReceived) {
-		// Listen for notifications when app is in foreground
 		this.notificationListener = Notifications.addNotificationReceivedListener(
 			(notification) => {
 				const { data } = notification.request.content;
@@ -83,7 +81,6 @@ class PushNotificationService {
 			}
 		);
 
-		// Listen for notification responses (when user taps notification)
 		this.responseListener =
 			Notifications.addNotificationResponseReceivedListener((response) => {
 				const { data } = response.notification.request.content;
@@ -143,4 +140,6 @@ class PushNotificationService {
 	}
 }
 
-export default new PushNotificationService();
+// ✅ Export lowercase singleton instance to avoid React misinterpreting it as a component
+const pushNotificationService = new PushNotificationService();
+export default pushNotificationService;

@@ -1,6 +1,6 @@
 <?php
 header('Content-Type: application/json');
-require 'db.php';
+require 'config/db.php';
 
 $data = json_decode(file_get_contents("php://input"), true);
 

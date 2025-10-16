@@ -4,7 +4,7 @@ import { useRouter } from 'expo-router';
 import React, { useContext, useEffect, useState } from 'react';
 import { Alert, Text, View } from 'react-native';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
-import { AuthContext } from '../app/AuthContext';
+import { AuthContext } from '../context/AuthContext';
 
 const ProtectedRoute = ({
 	children,
