@@ -1,16 +1,17 @@
 import DateTimePicker from '@react-native-community/datetimepicker';
-import { Picker } from '@react-native-picker/picker';
 import { useRouter } from 'expo-router';
-import React, { useState } from 'react';
+import React, { useContext, useState } from 'react';
+import { AuthContext } from '../context/AuthContext';
+
 import {
 	Alert,
-	Button,
 	ImageBackground,
 	KeyboardAvoidingView,
 	Platform,
 	ScrollView,
 	Text,
 	TextInput,
+	TouchableOpacity,
 	View,
 } from 'react-native';
 import Animated, { FadeInUp } from 'react-native-reanimated';
@@ -30,6 +31,7 @@ export default function RegisterScreen() {
 	const [address, setAddress] = useState('');
 	const [phoneNumber, setPhoneNumber] = useState('');
 	const [loading, setLoading] = useState(false);
+	const { login } = useContext(AuthContext);
 
 	const handleRegister = async () => {
 		if (!firstName || !lastName || !address || !phoneNumber) {
@@ -49,6 +51,7 @@ export default function RegisterScreen() {
 			});
 
 			if (res.data.success) {
+                await login(res.data.token, res.data.member_id);
 				Alert.alert('Success', 'Registration completed successfully!', [
 					{
 						text: 'OK',
@@ -73,97 +76,114 @@ export default function RegisterScreen() {
 			<KeyboardAvoidingView
 				behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
 				style={{ flex: 1 }}>
-				<ScrollView contentContainerStyle={{ flexGrow: 1 }}>
-					<View style={styles.container}>
-						<Animated.Text
-							entering={FadeInUp.duration(700)}
-							style={styles.title}>
-							Complete Your Profile
-						</Animated.Text>
-
-						<Text style={styles.subtitle}>
-							Please fill in your details to complete registration
-						</Text>
-
-						<Animated.View
-							entering={FadeInUp.delay(200)}
-							style={styles.inputRow}>
-							<Icon name='person' size={24} color='#555' />
-							<TextInput
-								style={styles.inputField}
-								placeholder='First Name *'
-								value={firstName}
-								onChangeText={setFirstName}
-							/>
+				<ScrollView contentContainerStyle={styles.professionalScrollContainer}>
+					<View style={styles.professionalContainer}>
+						<Animated.View entering={FadeInUp.duration(700)}>
+							<Text style={styles.professionalTitle}>Complete Your Profile</Text>
+							<Text style={styles.professionalSubtitle}>
+								Tell us a bit more about yourself.
+							</Text>
 						</Animated.View>
 
-						<View style={styles.inputRow}>
-							<Icon name='person-outline' size={24} color='#555' />
-							<TextInput
-								style={styles.inputField}
-								placeholder='Last Name *'
-								value={lastName}
-								onChangeText={setLastName}
-							/>
-						</View>
+						<View style={styles.solidFormContainer}>
+                            <Text style={styles.formLabel}>First Name</Text>
+							<View style={styles.inputRow}>
+								<Icon name='person' size={24} color='#555' />
+								<TextInput
+									style={styles.inputField}
+									placeholder='First Name *'
+									value={firstName}
+									onChangeText={setFirstName}
+									placeholderTextColor='#6c757d'
+								/>
+							</View>
 
-						<Text style={styles.label}>Gender</Text>
-						<Picker
-							selectedValue={gender}
-							style={styles.picker}
-							onValueChange={setGender}>
-							<Picker.Item label='Male' value='M' />
-							<Picker.Item label='Female' value='F' />
-						</Picker>
+                            <Text style={styles.formLabel}>Last Name</Text>
+							<View style={styles.inputRow}>
+								<Icon name='person-outline' size={24} color='#555' />
+								<TextInput
+									style={styles.inputField}
+									placeholder='Last Name *'
+									value={lastName}
+									onChangeText={setLastName}
+									placeholderTextColor='#6c757d'
+								/>
+							</View>
 
-						<Text style={styles.label}>Date of Birth</Text>
-						<View
-							style={styles.dateInput}
-							onTouchStart={() => setShowDatePicker(true)}>
-							<Text>{dob.toDateString()}</Text>
-						</View>
-						{showDatePicker && (
-							<DateTimePicker
-								value={dob}
-								mode='date'
-								display='default'
-								onChange={(event, selectedDate) => {
-									setShowDatePicker(false);
-									if (selectedDate) setDob(selectedDate);
-								}}
-							/>
-						)}
+                            <Text style={styles.formLabel}>Gender</Text>
+							<View style={styles.proGenderSelector}>
+								<TouchableOpacity
+									style={[
+										styles.proGenderOption,
+										gender === 'M' && styles.proGenderOptionSelected,
+									]}
+									onPress={() => setGender('M')}>
+									<Text style={[styles.proGenderText, gender === 'M' && styles.proGenderTextSelected]}>Male</Text>
+								</TouchableOpacity>
+								<TouchableOpacity
+									style={[
+										styles.proGenderOption,
+										gender === 'F' && styles.proGenderOptionSelected,
+									]}
+									onPress={() => setGender('F')}>
+									<Text style={[styles.proGenderText, gender === 'F' && styles.proGenderTextSelected]}>Female</Text>
+								</TouchableOpacity>
+							</View>
 
-						<View style={styles.inputRow}>
-							<Icon name='home' size={24} color='#555' />
-							<TextInput
-								style={styles.inputField}
-								placeholder='Address *'
-								value={address}
-								onChangeText={setAddress}
-								multiline
-							/>
-						</View>
+                            <Text style={styles.formLabel}>Date of Birth</Text>
+							<TouchableOpacity
+								style={styles.inputRow}
+								onPress={() => setShowDatePicker(true)}>
+								<Icon name='cake' size={24} color='#555' />
+								<Text style={styles.dateText}>{dob.toDateString()}</Text>
+							</TouchableOpacity>
 
-						<View style={styles.inputRow}>
-							<Icon name='phone' size={24} color='#555' />
-							<TextInput
-								style={styles.inputField}
-								placeholder='Phone Number *'
-								value={phoneNumber}
-								keyboardType='phone-pad'
-								onChangeText={setPhoneNumber}
-							/>
+							{showDatePicker && (
+								<DateTimePicker
+									value={dob}
+									mode='date'
+									display='default'
+									onChange={(event, selectedDate) => {
+										setShowDatePicker(false);
+										if (selectedDate) setDob(selectedDate);
+									}}
+								/>
+							)}
+
+                            <Text style={styles.formLabel}>Address</Text>
+							<View style={styles.inputRow}>
+								<Icon name='home' size={24} color='#555' />
+								<TextInput
+									style={styles.inputField}
+									placeholder='Address *'
+									value={address}
+									onChangeText={setAddress}
+									placeholderTextColor='#6c757d'
+								/>
+							</View>
+
+                            <Text style={styles.formLabel}>Phone Number</Text>
+							<View style={styles.inputRow}>
+								<Icon name='phone' size={24} color='#555' />
+								<TextInput
+									style={styles.inputField}
+									placeholder='Phone Number *'
+									value={phoneNumber}
+									keyboardType='phone-pad'
+									onChangeText={setPhoneNumber}
+									placeholderTextColor='#6c757d'
+								/>
+							</View>
+
+							<TouchableOpacity
+								style={styles.primaryButton}
+									onPress={handleRegister}
+									disabled={loading}>
+								<Text style={styles.primaryButtonText}>
+									{loading ? 'Completing Registration...' : 'Register'}
+								</Text>
+							</TouchableOpacity>
 						</View>
-						<Animated.View
-							entering={FadeInUp.delay(600)}
-							style={styles.buttonContainer}>
-							<Button
-								title={loading ? 'Registering...' : 'Register'}
-								onPress={handleRegister}
-								disabled={loading}
-							/>
-						</Animated.View>
 					</View>
 				</ScrollView>
 			</KeyboardAvoidingView>

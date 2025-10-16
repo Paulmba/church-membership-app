@@ -5,6 +5,11 @@ header('Access-Control-Allow-Methods: POST');
 header('Access-Control-Allow-Headers: Content-Type');
 
 require 'config/db.php';
+require __DIR__ . '/vendor/autoload.php';
+
+use Firebase\JWT\JWT;
+
+$secret_key = getenv('JWT_SECRET_KEY') ?: "197b7ca74482c4000c46ae8a88d5fe111cefe05e4f4c01407c82216c189b2955";
 
 $data = json_decode(file_get_contents("php://input"), true);
 
@@ -58,7 +63,24 @@ if ($conn->query($sql)) {
     // Update MobileUsers table with member ID
     $conn->query("UPDATE MobileUsers SET mid = $mid WHERE phone_number = '$phone_number'");
 
-    echo json_encode(['success' => true, 'message' => 'Registration completed successfully']);
+    // Generate JWT Token
+    $issued_at = time();
+    $expire = $issued_at + (60 * 60); // 1 hour
+    $payload = [
+        "iss" => "membership_app",
+        "iat" => $issued_at,
+        "exp" => $expire,
+        "mid" => $mid,
+        "phone_number" => $phone_number
+    ];
+    $jwt = JWT::encode($payload, $secret_key, 'HS256');
+
+    echo json_encode([
+        'success' => true, 
+        'message' => 'Registration completed successfully',
+        'token' => $jwt,
+        'member_id' => $mid
+    ]);
 } else {
     echo json_encode(['success' => false, 'message' => 'Registration failed: ' . $conn->error]);
 }

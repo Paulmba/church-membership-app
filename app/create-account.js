@@ -1,14 +1,15 @@
+import { BlurView } from 'expo-blur';
 import { useRouter } from 'expo-router';
 import React, { useEffect, useState } from 'react';
 import {
 	Alert,
-	Button,
 	ImageBackground,
 	KeyboardAvoidingView,
 	Platform,
 	ScrollView,
 	Text,
 	TextInput,
+	TouchableOpacity,
 	View,
 } from 'react-native';
 import Animated, { FadeInUp } from 'react-native-reanimated';
@@ -35,18 +36,18 @@ export default function CreateAccountScreen() {
 			const token = await pushNotificationService.initialize();
 			if (token) {
 				setPushToken(token);
-				console.log('Push token obtained:', token);
-			} else {
-				console.log('Failed to get push token');
-				Alert.alert(
-					'Notification Permission',
-					'Push notifications are disabled. You may not receive OTP notifications.',
-					[{ text: 'OK' }]
-				);
 			}
 		} catch (error) {
 			console.error('Push notification initialization error:', error);
 		}
+	};
+
+	const getPasswordStrength = () => {
+		const length = password.length;
+		if (length === 0) return { strength: 'none', color: '#ced4da' };
+		if (length < 6) return { strength: 'Weak', color: '#dc3545' };
+		if (length < 10) return { strength: 'Medium', color: '#ffc107' };
+		return { strength: 'Strong', color: '#28a745' };
 	};
 
 	const handleCreateAccount = async () => {
@@ -74,25 +75,10 @@ export default function CreateAccountScreen() {
 			const res = await api.auth.createAccount(requestData);
 
 			if (res.data.success) {
-				const message = res.data.notification_sent
-					? 'Account created successfully! Check your notifications for the OTP.'
-					: 'Account created successfully! You will need to enter the OTP manually.';
-
-				Alert.alert('Account Created', message, [
-					{
-						text: 'OK',
-						onPress: () =>
-							router.push({
-								pathname: '/otp-verification',
-								params: {
-									phone_number: phone,
-									has_push_notifications: res.data.notification_sent
-										? 'true'
-										: 'false',
-								},
-							}),
-					},
-				]);
+				router.push({
+					pathname: '/otp-verification',
+					params: { phone_number: phone },
+				});
 			} else {
 				Alert.alert('Error', res.data.message || 'Account creation failed');
 			}
@@ -104,6 +90,8 @@ export default function CreateAccountScreen() {
 		}
 	};
 
+	const { strength, color } = getPasswordStrength();
+
 	return (
 		<ImageBackground
 			source={require('../assets/bg.jpg')}
@@ -111,67 +99,89 @@ export default function CreateAccountScreen() {
 			<KeyboardAvoidingView
 				behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
 				style={{ flex: 1 }}>
-				<ScrollView contentContainerStyle={{ flexGrow: 1 }}>
+				<ScrollView contentContainerStyle={styles.scrollContainer}>
 					<View style={styles.container}>
-						<Animated.Text
-							entering={FadeInUp.duration(700)}
-							style={styles.title}>
-							Create Account
-						</Animated.Text>
-
-						<Animated.View
-							entering={FadeInUp.delay(200)}
-							style={styles.inputRow}>
-							<Icon name='phone' size={24} color='#555' />
-							<TextInput
-								style={styles.inputField}
-								placeholder='Phone Number'
-								value={phone}
-								onChangeText={setPhone}
-								keyboardType='phone-pad'
-							/>
+						<Animated.View entering={FadeInUp.duration(700)}>
+							<Text style={styles.title}>Join Us</Text>
 						</Animated.View>
 
-						<View style={styles.inputRow}>
-							<Icon name='lock' size={24} color='#555' />
-							<TextInput
-								style={styles.inputField}
-								placeholder='Password'
-								value={password}
-								onChangeText={setPassword}
-								secureTextEntry
-							/>
-						</View>
-
-						<View style={styles.inputRow}>
-							<Icon name='lock-outline' size={24} color='#555' />
-							<TextInput
-								style={styles.inputField}
-								placeholder='Confirm Password'
-								value={confirmPassword}
-								onChangeText={setConfirmPassword}
-								secureTextEntry
-							/>
-						</View>
-
-						<View style={styles.buttonContainer}>
-							<Button
-								title={loading ? 'Creating Account...' : 'Create Account'}
-								onPress={handleCreateAccount}
-								disabled={loading}
-							/>
-						</View>
-
-						{!pushToken && (
+						<BlurView intensity={80} tint='light' style={styles.formContainer}>
 							<Animated.View
-								entering={FadeInUp.delay(800)}
-								style={styles.warningContainer}>
-								<Icon name='warning' size={20} color='#ff9800' />
-								<Text style={styles.warningText}>
-									Push notifications disabled. Enable them for OTP delivery.
-								</Text>
+								entering={FadeInUp.delay(200)}
+								style={styles.inputRow}>
+								<Icon name='phone' size={24} color='#555' />
+								<TextInput
+									style={styles.inputField}
+									placeholder='Phone Number'
+									value={phone}
+									onChangeText={setPhone}
+									keyboardType='phone-pad'
+									placeholderTextColor='#6c757d'
+								/>
 							</Animated.View>
-						)}
+
+							<Animated.View
+								entering={FadeInUp.delay(400)}
+								style={styles.inputRow}>
+								<Icon name='lock' size={24} color='#555' />
+								<TextInput
+									style={styles.inputField}
+									placeholder='Password'
+									value={password}
+									onChangeText={setPassword}
+									secureTextEntry
+									placeholderTextColor='#6c757d'
+								/>
+							</Animated.View>
+
+							{password.length > 0 && (
+								<View style={styles.strengthIndicatorContainer}>
+									<View
+										style={[
+											styles.strengthIndicator,
+											{ backgroundColor: color },
+										]}></View>
+									<Text style={[styles.strengthText, { color }]}>
+										{strength}
+									</Text>
+								</View>
+							)}
+
+							<Animated.View
+								entering={FadeInUp.delay(600)}
+								style={styles.inputRow}>
+								<Icon name='lock-outline' size={24} color='#555' />
+								<TextInput
+									style={styles.inputField}
+									placeholder='Confirm Password'
+									value={confirmPassword}
+									onChangeText={setConfirmPassword}
+									secureTextEntry
+									placeholderTextColor='#6c757d'
+								/>
+							</Animated.View>
+
+							<Animated.View entering={FadeInUp.delay(800)}>
+								<TouchableOpacity
+									style={styles.primaryButton}
+									onPress={handleCreateAccount}
+									disabled={loading}>
+									<Text style={styles.primaryButtonText}>
+										{loading ? 'Creating Account...' : 'Create Account'}
+									</Text>
+								</TouchableOpacity>
+							</Animated.View>
+						</BlurView>
+
+						<Animated.View entering={FadeInUp.delay(900)}>
+							<TouchableOpacity
+								style={styles.linkContainer}
+								onPress={() => router.back()}>
+								<Text style={styles.linkText}>
+									Already have an account? Login
+								</Text>
+							</TouchableOpacity>
+						</Animated.View>
 					</View>
 				</ScrollView>
 			</KeyboardAvoidingView>
